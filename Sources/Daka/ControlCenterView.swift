@@ -20,6 +20,7 @@ struct ControlCenterView: View {
             .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 260)
         } detail: {
             detail(for: model.selectedTool)
+                .padding(20)
         }
         .frame(minWidth: 720, minHeight: 520)
         .toolbar {
