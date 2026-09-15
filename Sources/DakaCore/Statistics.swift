@@ -59,7 +59,6 @@ public enum Statistics {
                                rangeDays: Int,
                                calendar: Calendar = .current) -> StatisticsSummary {
         let range = max(1, rangeDays)
-        let nowMonth = calendar.dateComponents([.year, .month], from: now)
         let eveningDeadlineToday = DakaDate.date(on: now, at: settings.eveningDeadline, calendar: calendar)
 
         var days: [DailyStat] = []
@@ -87,17 +86,24 @@ public enum Statistics {
                                   eveningDoneAt: record.eveningDoneAt,
                                   workDuration: duration))
 
-            if isWorkday && completedBoth {
-                let dayMonth = calendar.dateComponents([.year, .month], from: day)
-                if dayMonth.year == nowMonth.year && dayMonth.month == nowMonth.month {
-                    monthPunch += 1
-                }
-            }
-
             if isWorkday && !record.skipped && !completedBoth {
                 let isToday = calendar.isDate(day, inSameDayAs: now)
                 let expired = !isToday || (eveningDeadlineToday.map { now >= $0 } ?? false)
                 if expired { missed += 1 }
+            }
+        }
+
+        if let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) {
+            var day = calendar.startOfDay(for: monthStart)
+            while day <= now {
+                let key = DakaDate.key(for: day, calendar: calendar)
+                let record = records[key] ?? DayRecord()
+                let isWorkday = settings.workdays.contains(DakaDate.weekday(of: day, calendar: calendar))
+                if isWorkday && record.morningDone && record.eveningDone {
+                    monthPunch += 1
+                }
+                guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                day = next
             }
         }
 

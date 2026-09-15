@@ -96,4 +96,15 @@ final class StatisticsTests: XCTestCase {
         let s = Statistics.compute(records: recs, settings: .default, now: now, rangeDays: 30, calendar: cal)
         XCTAssertEqual(s.monthPunchDays, 2)
     }
+
+    func testMonthPunchIndependentOfRange() {
+        let recs = records([
+            (TestTime.date(2026, 9, 14), true, true, nil, nil, false),
+            (TestTime.date(2026, 9, 15), true, true, nil, nil, false)
+        ])
+        // rangeDays 1 -> range only covers today, but the month count still sees 09-14/09-15
+        let s = Statistics.compute(records: recs, settings: .default, now: now, rangeDays: 1, calendar: cal)
+        XCTAssertEqual(s.monthPunchDays, 2)
+        XCTAssertEqual(s.days.count, 1)
+    }
 }
