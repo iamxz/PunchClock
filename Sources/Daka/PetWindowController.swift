@@ -7,7 +7,7 @@ final class PetWindowController: NSObject {
     private var window: NSWindow?
     private var popover: NSPopover?
     private let frameKey = "pet.frame"
-    private let petSize = NSSize(width: 130, height: 130)
+    private let petSize = NSSize(width: 104, height: 104)
 
     init(model: AppModel) {
         self.model = model
