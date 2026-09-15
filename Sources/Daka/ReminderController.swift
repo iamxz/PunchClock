@@ -37,10 +37,13 @@ final class ReminderController: ReminderPresenting {
     private var currentTasks: [PunchTask] = []
     private var currentLevel: ReminderLevel?
     private var gentleTasks: [PunchTask] = []
+    private let notifier = GentleNotifier()
+    private var lastNotifyAt: Date?
 
     init(interval: TimeInterval, onPunch: @escaping (PunchTask) -> Void) {
         self.reassertInterval = interval
         self.overlayModel.onPunch = onPunch
+        notifier.requestAuthorizationIfNeeded()
     }
 
     func showGentle(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
@@ -52,6 +55,8 @@ final class ReminderController: ReminderPresenting {
         overlayModel.now = now
         stopReassertTimer()
         for w in windows { w.orderOut(nil) }
+        notifier.notify(tasks: tasks)
+        lastNotifyAt = now
     }
 
     func showHard(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
@@ -72,6 +77,11 @@ final class ReminderController: ReminderPresenting {
         overlayModel.now = now
         if currentLevel == .hard {
             rebuildWindowsIfNeeded()
+        } else if currentLevel == .gentle {
+            if let last = lastNotifyAt, now.timeIntervalSince(last) >= settings.reminderIntervalSeconds {
+                notifier.notify(tasks: gentleTasks)
+                lastNotifyAt = now
+            }
         }
     }
 
@@ -80,6 +90,7 @@ final class ReminderController: ReminderPresenting {
         currentLevel = nil
         gentleTasks = []
         currentTasks = []
+        lastNotifyAt = nil
         for w in windows { w.orderOut(nil) }
     }
 

@@ -9,8 +9,14 @@ struct DakaApp: App {
         MenuBarExtra {
             MenuBarView(model: model)
         } label: {
-            Image(systemName: model.hasPendingTasks ? "exclamationmark.circle.fill" : "checkmark.seal")
+            Image(systemName: iconName)
         }
         .menuBarExtraStyle(.window)
+    }
+
+    private var iconName: String {
+        if !model.reminderState.hard.isEmpty { return "exclamationmark.triangle.fill" }
+        if !model.reminderState.gentle.isEmpty { return "bell.badge" }
+        return "checkmark.seal"
     }
 }
