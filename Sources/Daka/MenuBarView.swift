@@ -6,7 +6,17 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text("今日打卡").font(.headline)
+            HStack {
+                Text("今日打卡").font(.headline)
+                Spacer()
+                Button {
+                    model.openControlCenter()
+                } label: {
+                    Image(systemName: "switch.2")
+                }
+                .buttonStyle(.plain)
+                .help("打开控制中心")
+            }
 
             VStack(spacing: 6) {
                 statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
@@ -21,14 +31,6 @@ struct MenuBarView: View {
                                                   now: model.now,
                                                   minWorkDuration: model.minWorkDuration)) { task in
                 model.punch(task)
-            }
-
-            Divider()
-
-            Button("控制中心") { model.openControlCenter() }
-                .frame(maxWidth: .infinity)
-            Button(model.petVisible ? "隐藏桌宠" : "显示桌宠") {
-                model.setPetVisible(!model.petVisible)
             }
         }
         .padding(16)
