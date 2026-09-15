@@ -28,8 +28,6 @@ struct PetView: View {
         .contextMenu {
             Button("打开控制中心") { model.openControlCenter() }
             Button(model.petVisible ? "隐藏桌宠" : "显示桌宠") { model.setPetVisible(!model.petVisible) }
-            Divider()
-            Button("退出 Daka") { model.quit() }
         }
         .onAppear { animate = true }
         .help("点击打开 Daka 工具面板")

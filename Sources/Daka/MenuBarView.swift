@@ -25,13 +25,8 @@ struct MenuBarView: View {
 
             Divider()
 
-            HStack {
-                Button("控制中心") { model.openControlCenter() }
-                    .frame(maxWidth: .infinity)
-                Button("退出") { model.quit() }
-                    .frame(maxWidth: .infinity)
-                    .disabled(model.hasHardTasks)
-            }
+            Button("控制中心") { model.openControlCenter() }
+                .frame(maxWidth: .infinity)
             Button(model.petVisible ? "隐藏桌宠" : "显示桌宠") {
                 model.setPetVisible(!model.petVisible)
             }

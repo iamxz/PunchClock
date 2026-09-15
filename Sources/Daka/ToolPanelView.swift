@@ -43,13 +43,8 @@ struct ToolPanelView: View {
                 model.punch(task)
             }
 
-            HStack {
-                Button("控制中心") { onClose(); model.openControlCenter() }
-                    .frame(maxWidth: .infinity)
-                Button("退出") { model.quit() }
-                    .frame(maxWidth: .infinity)
-                    .disabled(model.hasHardTasks)
-            }
+            Button("控制中心") { onClose(); model.openControlCenter() }
+                .frame(maxWidth: .infinity)
         }
         .padding(14)
         .frame(width: 260)

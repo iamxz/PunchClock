@@ -23,8 +23,6 @@ final class AppModel: ObservableObject {
 
     weak var mainWindow: MainWindowController?
 
-    var hasHardTasks: Bool { !reminderState.hard.isEmpty }
-
     /// 唯一放行退出的开关：设置页确认退出、或系统关机时置 true。
     var allowTermination = false
 
@@ -209,10 +207,6 @@ final class AppModel: ObservableObject {
 
     func setWorkdays(_ days: Set<Int>) {
         updateSettings { $0.workdays = days }
-    }
-
-    func quit() {
-        NSApp.terminate(nil)
     }
 
     func confirmQuit() {
