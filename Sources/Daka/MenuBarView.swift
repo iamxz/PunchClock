@@ -9,10 +9,12 @@ struct MenuBarView: View {
             Text("今日打卡").font(.headline)
 
             statusRow(task: .morning, done: model.record.morningDone,
-                      at: model.record.morningDoneAt, due: model.settings.morningTime,
+                      at: model.record.morningDoneAt,
+                      due: "\(model.settings.morningWindowStart)–\(model.settings.morningDeadline)",
                       inactive: scheduleInactive)
             statusRow(task: .evening, done: model.record.eveningDone,
-                      at: model.record.eveningDoneAt, due: model.settings.eveningTime,
+                      at: model.record.eveningDoneAt,
+                      due: "\(model.settings.eveningWindowStart)–\(model.settings.eveningDeadline)",
                       inactive: scheduleInactive)
 
             HStack {
@@ -37,8 +39,10 @@ struct MenuBarView: View {
                 get: { model.settings.enabled },
                 set: { model.setEnabled($0) }))
 
-            DatePicker("上班时间", selection: morningBinding, displayedComponents: .hourAndMinute)
-            DatePicker("下班时间", selection: eveningBinding, displayedComponents: .hourAndMinute)
+            DatePicker("上班开始", selection: morningStartBinding, displayedComponents: .hourAndMinute)
+            DatePicker("上班截止", selection: morningDeadlineBinding, displayedComponents: .hourAndMinute)
+            DatePicker("下班开始", selection: eveningStartBinding, displayedComponents: .hourAndMinute)
+            DatePicker("下班截止", selection: eveningDeadlineBinding, displayedComponents: .hourAndMinute)
 
             Divider()
 
@@ -105,14 +109,24 @@ struct MenuBarView: View {
         }
     }
 
-    private var morningBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.morningTime) },
-                set: { model.updateMorning(Self.hhmm(from: $0)) })
+    private var morningStartBinding: Binding<Date> {
+        Binding(get: { Self.dateFrom(model.settings.morningWindowStart) },
+                set: { model.updateMorningStart(Self.hhmm(from: $0)) })
     }
 
-    private var eveningBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.eveningTime) },
-                set: { model.updateEvening(Self.hhmm(from: $0)) })
+    private var morningDeadlineBinding: Binding<Date> {
+        Binding(get: { Self.dateFrom(model.settings.morningDeadline) },
+                set: { model.updateMorningDeadline(Self.hhmm(from: $0)) })
+    }
+
+    private var eveningStartBinding: Binding<Date> {
+        Binding(get: { Self.dateFrom(model.settings.eveningWindowStart) },
+                set: { model.updateEveningStart(Self.hhmm(from: $0)) })
+    }
+
+    private var eveningDeadlineBinding: Binding<Date> {
+        Binding(get: { Self.dateFrom(model.settings.eveningDeadline) },
+                set: { model.updateEveningDeadline(Self.hhmm(from: $0)) })
     }
 
     private static func dateFrom(_ hhmm: String) -> Date {

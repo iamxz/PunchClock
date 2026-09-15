@@ -3,38 +3,44 @@ import Foundation
 public struct ScheduleEvaluator {
     public init() {}
 
-    /// 返回当前应催办的打卡项。
-    /// - `launchForced`：应用刚启动，若上班未打卡且已过 `launchPromptEarliest`，
-    ///   即使还没到上班时间也催办（仅影响 morning）。
-    public func pendingTasks(now: Date,
-                             settings: Settings,
-                             record: DayRecord,
-                             calendar: Calendar = .current,
-                             launchForced: Bool = false) -> [PunchTask] {
+    public func pendingReminders(now: Date,
+                                 settings: Settings,
+                                 record: DayRecord,
+                                 calendar: Calendar = .current) -> [PendingReminder] {
         guard settings.enabled, !record.skipped else { return [] }
         guard settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar)) else { return [] }
 
-        var tasks: [PunchTask] = []
+        var reminders: [PendingReminder] = []
 
-        if !record.morningDone {
-            let due = DakaDate.date(on: now, at: settings.morningTime, calendar: calendar)
-            if let due, now >= due {
-                tasks.append(.morning)
-            } else if launchForced,
-                      let due, now < due,
-                      let earliest = DakaDate.date(on: now, at: settings.launchPromptEarliest, calendar: calendar),
-                      now >= earliest {
-                tasks.append(.morning)
-            }
+        if let level = level(now: now,
+                             start: settings.morningWindowStart,
+                             deadline: settings.morningDeadline,
+                             done: record.morningDone,
+                             calendar: calendar) {
+            reminders.append(PendingReminder(task: .morning, level: level))
         }
-
-        if !record.eveningDone {
-            let due = DakaDate.date(on: now, at: settings.eveningTime, calendar: calendar)
-            if let due, now >= due {
-                tasks.append(.evening)
-            }
+        if let level = level(now: now,
+                             start: settings.eveningWindowStart,
+                             deadline: settings.eveningDeadline,
+                             done: record.eveningDone,
+                             calendar: calendar) {
+            reminders.append(PendingReminder(task: .evening, level: level))
         }
+        return reminders
+    }
 
-        return tasks
+    private func level(now: Date,
+                       start: String,
+                       deadline: String,
+                       done: Bool,
+                       calendar: Calendar) -> ReminderLevel? {
+        guard !done else { return nil }
+        if let deadlineDate = DakaDate.date(on: now, at: deadline, calendar: calendar), now >= deadlineDate {
+            return .hard
+        }
+        if let startDate = DakaDate.date(on: now, at: start, calendar: calendar), now >= startDate {
+            return .gentle
+        }
+        return nil
     }
 }

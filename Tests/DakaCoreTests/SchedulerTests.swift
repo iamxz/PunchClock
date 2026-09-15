@@ -2,13 +2,15 @@ import XCTest
 @testable import DakaCore
 
 final class SpyPresenter: ReminderPresenting {
-    var lastShown: [PunchTask]?
+    var lastHard: [PunchTask]?
+    var lastGentle: [PunchTask]?
     var hideCount = 0
     var refreshCount = 0
 
-    func show(tasks: [PunchTask], settings: Settings, now: Date) { lastShown = tasks }
+    func showHard(tasks: [PunchTask], settings: Settings, now: Date) { lastHard = tasks; lastGentle = nil }
+    func showGentle(tasks: [PunchTask], settings: Settings, now: Date) { lastGentle = tasks; lastHard = nil }
     func refresh(settings: Settings, now: Date) { refreshCount += 1 }
-    func hide() { lastShown = nil; hideCount += 1 }
+    func hide() { lastHard = nil; lastGentle = nil; hideCount += 1 }
 }
 
 final class SchedulerTests: XCTestCase {
@@ -25,78 +27,66 @@ final class SchedulerTests: XCTestCase {
         try? FileManager.default.removeItem(at: dir)
     }
 
-    private func makeScheduler(now: Date,
-                               launchForced: Bool = false) -> (Scheduler, FixedClock, PunchStore, SpyPresenter) {
+    private func makeScheduler(now: Date) -> (Scheduler, FixedClock, PunchStore, SpyPresenter) {
         let clock = FixedClock(now)
         let store = PunchStore(fileURL: url)
         let presenter = SpyPresenter()
         let scheduler = Scheduler(clock: clock, store: store, presenter: presenter,
-                                  launchForced: launchForced, interval: 1,
-                                  calendar: TestTime.calendar)
+                                  interval: 1, calendar: TestTime.calendar)
         return (scheduler, clock, store, presenter)
     }
 
-    func testNoTasksBeforeMorningTime() {
+    func testNothingBeforeWindowHidesOnce() {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
         scheduler.tick()
-        XCTAssertNil(presenter.lastShown)
+        XCTAssertNil(presenter.lastHard)
+        XCTAssertNil(presenter.lastGentle)
         XCTAssertEqual(presenter.hideCount, 1)
     }
 
-    func testShowsMorningWhenDue() {
+    func testWindowStartShowsGentle() {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
         scheduler.tick()
-        XCTAssertEqual(presenter.lastShown, [.morning])
+        XCTAssertEqual(presenter.lastGentle, [.morning])
+        XCTAssertNil(presenter.lastHard)
     }
 
-    func testHidesAfterMorningDone() throws {
-        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
+    func testDeadlineShowsHard() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 30))
         scheduler.tick()
-        XCTAssertEqual(presenter.lastShown, [.morning])
+        XCTAssertEqual(presenter.lastHard, [.morning])
+        XCTAssertNil(presenter.lastGentle)
+    }
+
+    func testGentleToHardTransitionOnTicks() {
+        let (scheduler, clock, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 29))
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastGentle, [.morning])
+
+        clock.now = TestTime.date(2026, 9, 14, 9, 30)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.morning])
+        XCTAssertNil(presenter.lastGentle)
+    }
+
+    func testHardTakesPriorityOverGentle() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.morning])
+        XCTAssertNil(presenter.lastGentle)
+    }
+
+    func testHidesAfterPunch() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 35))
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.morning])
 
         try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
         scheduler.tick()
-        XCTAssertNil(presenter.lastShown)
+        XCTAssertNil(presenter.lastHard)
     }
 
-    func testShowsEveningAfterMorningDone() throws {
-        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
-        try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
-        clock.now = TestTime.date(2026, 9, 14, 18, 30)
-        scheduler.tick()
-        XCTAssertEqual(presenter.lastShown, [.evening])
-    }
-
-    func testLaunchForcedShowsMorningEarly() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 7, 0),
-                                                         launchForced: true)
-        scheduler.tick()
-        XCTAssertEqual(presenter.lastShown, [.morning])
-    }
-
-    func testLaunchForcedIgnoredBeforeEarliest() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 5, 0),
-                                                         launchForced: true)
-        scheduler.tick()
-        XCTAssertNil(presenter.lastShown)
-    }
-
-    func testWeekendNeverShows() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 19, 9, 0))
-        scheduler.tick()
-        XCTAssertNil(presenter.lastShown)
-    }
-
-    func testPendingStateCallback() {
-        let (scheduler, _, _, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
-        var observed: [PunchTask] = []
-        scheduler.onStateChange = { observed = $0 }
-        scheduler.tick()
-        XCTAssertEqual(observed, [.morning])
-        XCTAssertTrue(scheduler.hasPendingTasks)
-    }
-
-    func testRefreshCalledOnSubsequentPendingTicks() {
+    func testRefreshWhileStable() {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
         scheduler.tick()
         XCTAssertEqual(presenter.refreshCount, 0)
@@ -104,48 +94,29 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(presenter.refreshCount, 1)
     }
 
-    func testRefreshNotCalledWhenNothingPending() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
-        scheduler.tick()
-        scheduler.tick()
-        XCTAssertEqual(presenter.refreshCount, 0)
-    }
-
-    func testLaunchForceDoesNotLeakToNextDay() {
-        let (scheduler, clock, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 7, 0),
-                                                             launchForced: true)
-        scheduler.tick()
-        XCTAssertEqual(presenter.lastShown, [.morning])
-
-        // Simulate sleeping across the day boundary without any tick.
-        clock.now = TestTime.date(2026, 9, 15, 7, 0)
-        scheduler.tick()
-        XCTAssertNil(presenter.lastShown)
-    }
-
-    func testStateChangeFiresOnDayRollover() {
-        let (scheduler, clock, _, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
-        var observed: [[PunchTask]] = []
+    func testStateCallbackAndState() {
+        let (scheduler, _, _, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
+        var observed: [ReminderState] = []
         scheduler.onStateChange = { observed.append($0) }
+        scheduler.tick()
+        XCTAssertEqual(observed, [ReminderState(gentle: [.morning], hard: [])])
+        XCTAssertEqual(scheduler.state, ReminderState(gentle: [.morning], hard: []))
+    }
 
+    func testDayRolloverFiresCallback() {
+        let (scheduler, clock, _, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
+        var observed: [ReminderState] = []
+        scheduler.onStateChange = { observed.append($0) }
         scheduler.tick()
         clock.now = TestTime.date(2026, 9, 15, 8, 0)
         scheduler.tick()
-        XCTAssertEqual(observed, [[], []])
+        XCTAssertEqual(observed.count, 2)
     }
 
-    func testStateChangeFiresOnlyOnTransition() {
-        let (scheduler, clock, store, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
-        var observed: [[PunchTask]] = []
-        scheduler.onStateChange = { observed.append($0) }
-
+    func testWeekendNeverShows() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 19, 10, 0))
         scheduler.tick()
-        scheduler.tick()
-        XCTAssertEqual(observed, [[.morning]])
-
-        try? store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
-        scheduler.tick()
-        XCTAssertEqual(observed, [[.morning], []])
-        XCTAssertFalse(scheduler.hasPendingTasks)
+        XCTAssertNil(presenter.lastHard)
+        XCTAssertNil(presenter.lastGentle)
     }
 }

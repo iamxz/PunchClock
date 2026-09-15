@@ -59,7 +59,7 @@ struct OverlayView: View {
     }
 
     private func overdueText(for task: PunchTask) -> String? {
-        let hhmm = task == .morning ? model.settings.morningTime : model.settings.eveningTime
+        let hhmm = task == .morning ? model.settings.morningDeadline : model.settings.eveningDeadline
         guard let due = DakaDate.date(on: model.now, at: hhmm), model.now > due else { return nil }
         let seconds = Int(model.now.timeIntervalSince(due))
         let hours = seconds / 3600

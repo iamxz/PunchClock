@@ -35,13 +35,28 @@ final class ReminderController: ReminderPresenting {
     private var builtFrames: [CGRect] = []
     private var reassertTimer: Timer?
     private var currentTasks: [PunchTask] = []
+    private var currentLevel: ReminderLevel?
+    private var gentleTasks: [PunchTask] = []
 
     init(interval: TimeInterval, onPunch: @escaping (PunchTask) -> Void) {
         self.reassertInterval = interval
         self.overlayModel.onPunch = onPunch
     }
 
-    func show(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
+    func showGentle(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
+        currentLevel = .gentle
+        gentleTasks = tasks
+        currentTasks = []
+        overlayModel.tasks = tasks
+        overlayModel.settings = settings
+        overlayModel.now = now
+        stopReassertTimer()
+        for w in windows { w.orderOut(nil) }
+    }
+
+    func showHard(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
+        currentLevel = .hard
+        gentleTasks = []
         currentTasks = tasks
         overlayModel.tasks = tasks
         overlayModel.settings = settings
@@ -55,11 +70,15 @@ final class ReminderController: ReminderPresenting {
     func refresh(settings: DakaCore.Settings, now: Date) {
         overlayModel.settings = settings
         overlayModel.now = now
-        rebuildWindowsIfNeeded()
+        if currentLevel == .hard {
+            rebuildWindowsIfNeeded()
+        }
     }
 
     func hide() {
         stopReassertTimer()
+        currentLevel = nil
+        gentleTasks = []
         currentTasks = []
         for w in windows { w.orderOut(nil) }
     }

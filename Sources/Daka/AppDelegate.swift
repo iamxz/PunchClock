@@ -7,8 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let pending = MainActor.assumeIsolated { AppModel.shared.hasPendingTasks }
-        return pending ? .terminateCancel : .terminateNow
+        let hard = MainActor.assumeIsolated { AppModel.shared.hasHardTasks }
+        return hard ? .terminateCancel : .terminateNow
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

@@ -1,14 +1,14 @@
 import Foundation
 
-/// UI 侧实现：展示/刷新/隐藏全屏遮罩。
 public protocol ReminderPresenting: AnyObject {
-    func show(tasks: [PunchTask], settings: Settings, now: Date)
+    func showHard(tasks: [PunchTask], settings: Settings, now: Date)
+    func showGentle(tasks: [PunchTask], settings: Settings, now: Date)
     func refresh(settings: Settings, now: Date)
     func hide()
 }
 
 public final class Scheduler {
-    public var onStateChange: (([PunchTask]) -> Void)?
+    public var onStateChange: ((ReminderState) -> Void)?
 
     private let clock: DakaClock
     private let evaluator: ScheduleEvaluator
@@ -17,30 +17,25 @@ public final class Scheduler {
     private let interval: TimeInterval
     private let calendarOverride: Calendar?
     private var calendar: Calendar { calendarOverride ?? .current }
-    private let launchDayKey: String
 
-    private var launchForcedPending: Bool
     private var timer: Timer?
-    private var lastTasks: [PunchTask]?
+    private var lastState: ReminderState?
     private var lastDayKey: String?
 
-    public private(set) var hasPendingTasks: Bool = false
+    public private(set) var state = ReminderState()
 
     public init(clock: DakaClock,
                 evaluator: ScheduleEvaluator = ScheduleEvaluator(),
                 store: PunchStore,
                 presenter: ReminderPresenting,
-                launchForced: Bool = false,
                 interval: TimeInterval = 1,
                 calendar: Calendar? = nil) {
         self.clock = clock
         self.evaluator = evaluator
         self.store = store
         self.presenter = presenter
-        self.launchForcedPending = launchForced
         self.interval = interval
         self.calendarOverride = calendar
-        self.launchDayKey = DakaDate.key(for: clock.now, calendar: calendar ?? .current)
     }
 
     deinit {
@@ -62,7 +57,6 @@ public final class Scheduler {
         timer = nil
     }
 
-    /// 评估一次。供定时器、打卡后、唤醒/改时间后调用。
     public func tick() {
         let now = clock.now
         let dayKey = DakaDate.key(for: now, calendar: calendar)
@@ -71,40 +65,36 @@ public final class Scheduler {
 
         let settings = store.data.settings
         let record = store.record(for: now, calendar: calendar)
-        let forceMorning = launchForcedPending && dayKey == launchDayKey
-        let tasks = evaluator.pendingTasks(now: now, settings: settings, record: record,
-                                           calendar: calendar, launchForced: forceMorning)
-        consumeLaunchForceIfNeeded(now: now, settings: settings, record: record, dayKey: dayKey)
-        apply(tasks: tasks, settings: settings, now: now, dayChanged: dayChanged)
-    }
+        let reminders = evaluator.pendingReminders(now: now, settings: settings, record: record,
+                                                   calendar: calendar)
 
-    /// 开机强制项仅在启动当天有效；当天上班已打卡或已到上班时间后不再强制。
-    private func consumeLaunchForceIfNeeded(now: Date, settings: Settings, record: DayRecord, dayKey: String) {
-        guard launchForcedPending else { return }
-        if dayKey != launchDayKey || record.morningDone {
-            launchForcedPending = false
-            return
-        }
-        if let due = DakaDate.date(on: now, at: settings.morningTime, calendar: calendar), now >= due {
-            launchForcedPending = false
-        }
-    }
-
-    private func apply(tasks: [PunchTask], settings: Settings, now: Date, dayChanged: Bool) {
-        hasPendingTasks = !tasks.isEmpty
-        let changed = tasks != lastTasks
-        if changed {
-            lastTasks = tasks
-            if tasks.isEmpty {
-                presenter?.hide()
-            } else {
-                presenter?.show(tasks: tasks, settings: settings, now: now)
+        var newState = ReminderState()
+        for reminder in reminders {
+            switch reminder.level {
+            case .hard: newState.hard.append(reminder.task)
+            case .gentle: newState.gentle.append(reminder.task)
             }
-        } else if !tasks.isEmpty {
+        }
+        apply(state: newState, settings: settings, now: now, dayChanged: dayChanged)
+    }
+
+    private func apply(state newState: ReminderState, settings: Settings, now: Date, dayChanged: Bool) {
+        state = newState
+        let changed = newState != lastState
+        if changed {
+            lastState = newState
+            if !newState.hard.isEmpty {
+                presenter?.showHard(tasks: newState.hard, settings: settings, now: now)
+            } else if !newState.gentle.isEmpty {
+                presenter?.showGentle(tasks: newState.gentle, settings: settings, now: now)
+            } else {
+                presenter?.hide()
+            }
+        } else if !newState.isEmpty {
             presenter?.refresh(settings: settings, now: now)
         }
         if changed || dayChanged {
-            onStateChange?(tasks)
+            onStateChange?(newState)
         }
     }
 }

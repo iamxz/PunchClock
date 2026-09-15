@@ -9,9 +9,12 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var record: DayRecord
     @Published private(set) var settings: DakaCore.Settings
-    @Published private(set) var hasPendingTasks = false
+    @Published private(set) var reminderState = ReminderState()
     @Published var errorMessage: String?
     @Published var startupWarning: String?
+
+    var hasPendingTasks: Bool { !reminderState.isEmpty }
+    var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
     private let store: PunchStore
     private let clock: AdjustableClock
@@ -45,10 +48,10 @@ final class AppModel: ObservableObject {
         self.reminder = reminder
 
         let scheduler = Scheduler(clock: clock, store: store, presenter: reminder,
-                                  launchForced: true, interval: 1)
-        scheduler.onStateChange = { [weak self] tasks in
+                                  interval: 1)
+        scheduler.onStateChange = { [weak self] state in
             guard let self else { return }
-            self.hasPendingTasks = !tasks.isEmpty
+            self.reminderState = state
             self.refreshRecord()
         }
         self.scheduler = scheduler
@@ -109,8 +112,10 @@ final class AppModel: ObservableObject {
     }
 
     func setEnabled(_ enabled: Bool) { updateSettings { $0.enabled = enabled } }
-    func updateMorning(_ hhmm: String) { updateSettings { $0.morningTime = hhmm } }
-    func updateEvening(_ hhmm: String) { updateSettings { $0.eveningTime = hhmm } }
+    func updateMorningStart(_ hhmm: String) { updateSettings { $0.morningWindowStart = hhmm } }
+    func updateMorningDeadline(_ hhmm: String) { updateSettings { $0.morningDeadline = hhmm } }
+    func updateEveningStart(_ hhmm: String) { updateSettings { $0.eveningWindowStart = hhmm } }
+    func updateEveningDeadline(_ hhmm: String) { updateSettings { $0.eveningDeadline = hhmm } }
 
     private func updateSettings(_ mutate: (inout DakaCore.Settings) -> Void) {
         errorMessage = nil
