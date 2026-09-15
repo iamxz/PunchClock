@@ -38,12 +38,12 @@ make clean     # 清理 .build 与 build
 
 启动后应用同时出现在 Dock 与菜单栏，并打开主窗口：
 
-- 主窗口有「统计 / 设置」两个标签页；「设置」页可改上下班窗口时间与启用开关、切换「今天不打卡」、查看开机自启与定点启动状态。
+- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「打卡时间 / 工作日 / 考勤规则 / 系统与启动」四个子页分别配置，「打卡统计」页顶部可切换「今天不打卡」。
 - **关闭主窗口不退出应用**，应用继续在后台提醒；再次点 Dock 图标或菜单栏面板右上角的「控制中心」图标可重新打开。
 - 菜单栏图标反映当前状态：`checkmark.seal` 正常 / `bell.badge` 窗口内待打卡 / `exclamationmark.triangle.fill` 已过截止。
 - 菜单栏面板：右上角「控制中心」图标（`switch.2`）+ 今日状态 + 打卡按钮。
 - **应用不能随便退出**：菜单栏 / 桌宠 / 工具面板都没有退出入口，Cmd+Q 与 Dock 退出同样被拦截，请让它在后台常驻持续提醒。
-- **需要退出时**：主窗口「设置 → 应用 → 退出应用」，二次确认后才退出。
+- **需要退出时**：主窗口「设置 → 系统与启动 → 退出应用」，二次确认后才退出。
 - **系统注销 / 关机 / 重启**时允许应用退出，不会阻碍关机。
 - 全屏强制遮罩仍无法用 ESC、Cmd+W、Cmd+M、Cmd+H 关闭；完成对应打卡后自动消失。
 
@@ -98,7 +98,7 @@ Sources/
     AppDelegate.swift / DakaApp.swift
     AppModel.swift / MenuBarView.swift
     MainWindowController.swift / MainWindowView.swift
-    StatisticsView.swift / SettingsView.swift
+    StatisticsView.swift / SettingsPage.swift / SettingsPages.swift
     ReminderController.swift / OverlayView.swift
     GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
