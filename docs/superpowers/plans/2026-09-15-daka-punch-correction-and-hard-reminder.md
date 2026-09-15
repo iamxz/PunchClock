@@ -1,4 +1,4 @@
-# Daka v11 补卡 + v12 单一强提醒 Implementation Plan
+# Daka v12 补卡 + v13 单一强提醒 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -9,8 +9,8 @@
 **Tech Stack:** Swift 5.10 / SwiftPM、AppKit + SwiftUI、Swift Charts、XCTest。
 
 **Specs:**
-- `docs/superpowers/specs/2026-09-15-daka-punch-correction-design.md`（v11）
-- `docs/superpowers/specs/2026-09-15-daka-hard-only-reminder-design.md`（v12）
+- `docs/superpowers/specs/2026-09-15-daka-punch-correction-design.md`（v12）
+- `docs/superpowers/specs/2026-09-15-daka-hard-only-reminder-design.md`（v13）
 
 ---
 
@@ -40,7 +40,7 @@
 
 ---
 
-## Phase A — v11 补卡 / 改时间 / 删除
+## Phase A — v12 补卡 / 改时间 / 删除
 
 ### Task 1: PunchStore 支持修改与删除打卡
 
@@ -423,7 +423,7 @@ git commit -m "feat: add today's punch list with make-up/edit/delete UI"
 
 ---
 
-## Phase B — v12 单一强提醒 + 可配置间隔
+## Phase B — v13 单一强提醒 + 可配置间隔
 
 > 说明：`ReminderState` 类型简化会牵动 `ScheduleEvaluator` / `Scheduler` / `ReminderPresenting` / `ReminderController` / 菜单栏 / 桌宠 / 测试。Swift 按模块整体编译，因此 Task 4 是**一个原子的类型重构**：先改测试与全部调用点，再统一 `swift test` 验证。
 
@@ -1275,7 +1275,7 @@ git commit -m "feat: configurable repeat interval for full-screen reminder"
 把 `docs/verification.md` 第 10-28 行（「窗口内温和提醒」「过截止强制提醒」「通知权限」三节）整体替换为：
 
 ```markdown
-## 全屏强提醒（v12）
+## 全屏强提醒（v13）
 
 - [ ] 08:59 → 无提醒；09:00 → 立即全屏遮罩「该上班打卡了」。
 - [ ] 全屏遮罩置顶，ESC / Cmd+W / Cmd+M / Cmd+H 无效。
@@ -1324,20 +1324,20 @@ git commit -m "feat: configurable repeat interval for full-screen reminder"
 - [ ] 打卡全部既有行为无回归（全屏强提醒、重复打卡、最少工时、休假、定点启动）。
 ```
 
-- [ ] **Step 6: verification.md 新增 v11 与 v12 补卡条目**
+- [ ] **Step 6: verification.md 新增 v12 与 v13 补卡条目**
 
-在 `docs/verification.md` 末尾（v11 健康章节之后）追加：
+在 `docs/verification.md` 末尾（健康习惯 v11 章节之后）追加：
 
 ```markdown
-## v11：今日补卡 / 改时间 / 删除
+## v12：今日补卡 / 改时间 / 删除
 
 - [ ] 「打卡统计」页顶部出现「今日打卡」，上班/下班各列出今天已有的打卡时间。
 - [ ] 点「补卡」弹时间选择器（默认当前时间），保存后该条出现在列表，统计同步刷新。
 - [ ] 点「改时间」默认显示该条原时间，保存后时间更新；上班取最早、下班取最晚规则仍成立。
-- [ ] 点「删除」弹确认框，确认后该条消失；删掉当天唯一上班卡后状态变回「上班待打卡」。
+- [ ] 点「删除」弹确认框，确认后该条消失；删掉当天唯一上班卡后重新变为待打卡并再次弹出强提醒。
 - [ ] 补卡/改时间/删除仅影响今天，历史日期不受影响。
 
-## v12：单一强提醒 + 可配置间隔
+## v13：单一强提醒 + 可配置间隔
 
 - [ ] 「设置 → 打卡时间 → 重复提醒」可改 1–60 分钟；改后正在显示的全屏遮罩按新间隔重弹。
 - [ ] 菜单栏图标只有两态（勾 / 三角），不再出现铃铛。
@@ -1358,4 +1358,4 @@ git commit -m "docs: update reminder docs for make-up punch and hard-only remind
 
 - 运行完整测试：`swift test` → 全部 PASS。
 - 构建安装：`make install`（需 `Resources/Daka.icns` 已存在）。
-- 按 `docs/verification.md` 的 v11 / v12 清单手动过一遍。
+- 按 `docs/verification.md` 的 v12 / v13 清单手动过一遍。

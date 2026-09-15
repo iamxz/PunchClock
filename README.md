@@ -40,7 +40,7 @@ make clean     # 清理 .build 与 build
 
 启动后应用同时出现在 Dock 与菜单栏，并打开主窗口：
 
-- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「打卡时间 / 工作日 / 考勤规则 / 系统与启动」四个子页分别配置，「打卡统计」页顶部可切换「今天不打卡」。
+- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「打卡时间 / 工作日 / 考勤规则 / 系统与启动」四个子页分别配置，「打卡统计」页可切换「今天不打卡」。
 - 「打卡统计」页顶部为「今日打卡」：可对上班/下班**补卡**（选时间）、**改时间**、**删除**误点记录，仅限今天。
 - **关闭主窗口不退出应用**，应用继续在后台提醒；再次点 Dock 图标或菜单栏面板右上角的「控制中心」图标可重新打开。
 - 菜单栏图标两态：`checkmark.seal` 正常 / `exclamationmark.triangle.fill` 有待打卡。
@@ -69,14 +69,13 @@ make clean     # 清理 .build 与 build
     "morningDeadline": "09:30",
     "eveningWindowStart": "18:00",
     "eveningDeadline": "18:30",
-    "reminderIntervalSeconds": 120
+    "reminderIntervalSeconds": 120,
+    "minWorkDurationHours": 8
   },
   "records": {
     "2026-09-14": {
-      "morningDone": true,
-      "morningDoneAt": "2026-09-14T09:01:12+08:00",
-      "eveningDone": false,
-      "eveningDoneAt": null,
+      "morningPunches": ["2026-09-14T09:01:12+08:00"],
+      "eveningPunches": [],
       "skipped": false
     }
   }
@@ -119,17 +118,18 @@ Sources/
     PunchStore.swift      持久化（原子写、损坏恢复）
     DakaClock.swift       可注入时钟
     Statistics.swift      统计口径
+    DakaDate.swift / PunchRules.swift / PunchTarget.swift / PetMood.swift / ToolCatalog.swift 日期、打卡规则与工具目录
     HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
     LaunchAgentPlist.swift 定点拉起 plist 生成
   Daka/            # AppKit + SwiftUI 应用层
     AppDelegate.swift / DakaApp.swift
-    AppModel.swift / MenuBarView.swift
-    MainWindowController.swift / MainWindowView.swift
-    StatisticsView.swift / SettingsPage.swift / SettingsPages.swift
+    AppModel.swift / MenuBarView.swift / ControlCenterView.swift
+    MainWindowController.swift / SettingsPage.swift / SettingsPages.swift
+    StatisticsView.swift / PunchToolView.swift / PunchButton.swift
     ReminderController.swift / OverlayView.swift
     PetView.swift / PetWindowController.swift / PetSpeechBubble.swift / ToolPanelView.swift
     HealthReminderController.swift / HealthToolViews.swift
-    GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
+    ComingSoonView.swift / GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
 Resources/             # Info.plist、Daka.icns 应用图标、状态栏图标
 scripts/               # 图标生成脚本（make-appicon.swift 等）
