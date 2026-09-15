@@ -6,7 +6,7 @@ final class LaunchAgentPlistTests: XCTestCase {
         let dict = try parse(makePlist())
         XCTAssertEqual(dict["Label"] as? String, "com.xue.daka.schedule")
         XCTAssertEqual(dict["ProgramArguments"] as? [String],
-                       ["/usr/bin/open", "-b", "com.xue.daka"])
+                       ["/usr/bin/open", "-b", "com.xue.daka", "--args", "--background"])
     }
 
     func testFourCalendarTimes() throws {
