@@ -12,6 +12,7 @@ struct ToolPanelView: View {
             VStack(alignment: .leading, spacing: 4) {
                 summaryRow("打卡", punchSummary, "checkmark.seal")
                 summaryRow("喝水", "即将推出", "drop")
+                summaryRow("护眼", "即将推出", "eye")
                 summaryRow("久坐", "即将推出", "figure.walk")
             }
             .font(.caption)

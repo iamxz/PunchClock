@@ -182,10 +182,6 @@ final class AppModel: ObservableObject {
         objectWillChange.send()
     }
 
-    func openMainWindow() {
-        mainWindow?.show()
-    }
-
     func selectTool(_ id: ToolID) {
         selectedTool = id
     }

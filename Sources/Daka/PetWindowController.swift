@@ -14,6 +14,10 @@ final class PetWindowController: NSObject {
         super.init()
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     func show() {
         buildIfNeeded()
         window?.orderFrontRegardless()
@@ -23,8 +27,6 @@ final class PetWindowController: NSObject {
         popover?.close()
         window?.orderOut(nil)
     }
-
-    var isVisible: Bool { window?.isVisible ?? false }
 
     @objc private func saveFrame() {
         guard let window else { return }

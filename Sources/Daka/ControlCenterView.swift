@@ -8,13 +8,30 @@ struct ControlCenterView: View {
         NavigationSplitView {
             List(selection: toolSelection) {
                 ForEach(model.tools) { tool in
-                    Label(tool.title, systemImage: tool.symbol)
-                        .tag(tool.id)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label(tool.title, systemImage: tool.symbol)
+                        Text(summary(for: tool.id))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(tool.id)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
+            .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 260)
         } detail: {
             detail(for: model.selectedTool)
+        }
+        .frame(minWidth: 720, minHeight: 520)
+    }
+
+    private func summary(for id: ToolID) -> String {
+        switch id {
+        case .punch:
+            let morning = model.record.morningDone ? "上班已完成" : "上班待打卡"
+            let evening = model.isEveningComplete ? "下班已完成" : "下班待打卡"
+            return "\(morning) · \(evening)"
+        default:
+            return "即将推出"
         }
     }
 
