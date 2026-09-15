@@ -22,6 +22,11 @@ struct ControlCenterView: View {
             detail(for: model.selectedTool)
         }
         .frame(minWidth: 720, minHeight: 520)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                PetToolbarToggle(model: model)
+            }
+        }
     }
 
     private func summary(for id: ToolID) -> String {
@@ -48,5 +53,18 @@ struct ControlCenterView: View {
         default:
             ComingSoonView(metadata: ToolCatalog.metadata(for: id))
         }
+    }
+}
+
+private struct PetToolbarToggle: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        Button {
+            model.setPetVisible(!model.petVisible)
+        } label: {
+            Image(systemName: model.petVisible ? "pawprint.fill" : "pawprint")
+        }
+        .help(model.petVisible ? "隐藏桌宠" : "显示桌宠")
     }
 }
