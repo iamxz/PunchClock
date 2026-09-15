@@ -118,6 +118,7 @@ Sources/
     PunchStore.swift      持久化（原子写、损坏恢复）
     DakaClock.swift       可注入时钟
     Statistics.swift      统计口径
+    HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
     LaunchAgentPlist.swift 定点拉起 plist 生成
   Daka/            # AppKit + SwiftUI 应用层
     AppDelegate.swift / DakaApp.swift
@@ -125,6 +126,8 @@ Sources/
     MainWindowController.swift / MainWindowView.swift
     StatisticsView.swift / SettingsPage.swift / SettingsPages.swift
     ReminderController.swift / OverlayView.swift
+    PetView.swift / PetWindowController.swift / PetSpeechBubble.swift / ToolPanelView.swift
+    HealthReminderController.swift / HealthToolViews.swift
     GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
 Resources/             # Info.plist、Daka.icns 应用图标、状态栏图标
