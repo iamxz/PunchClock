@@ -15,15 +15,17 @@ final class PunchPressModel: ObservableObject {
         var step = 0
         let interval = duration / Double(steps)
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            step += 1
-            self.progress = min(1, CGFloat(step) / CGFloat(steps))
-            if step >= steps {
-                timer.invalidate()
-                self.timer = nil
-                self.completed = true
-                self.progress = 1
-                onComplete()
+            MainActor.assumeIsolated {
+                guard let self else { timer.invalidate(); return }
+                step += 1
+                self.progress = min(1, CGFloat(step) / CGFloat(steps))
+                if step >= steps {
+                    timer.invalidate()
+                    self.timer = nil
+                    self.completed = true
+                    self.progress = 1
+                    onComplete()
+                }
             }
         }
     }
