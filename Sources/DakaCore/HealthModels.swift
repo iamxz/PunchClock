@@ -58,6 +58,16 @@ public struct DayHealthRecord: Codable, Equatable, Sendable {
     public var standCount: Int { stands.count }
     public var lastDrinkAt: Date? { drinks.max() }
     public var lastStandAt: Date? { stands.max() }
+
+    private enum CodingKeys: String, CodingKey {
+        case drinks, stands
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.drinks = try c.decodeIfPresent([Date].self, forKey: .drinks) ?? []
+        self.stands = try c.decodeIfPresent([Date].self, forKey: .stands) ?? []
+    }
 }
 
 public struct HealthData: Codable, Equatable, Sendable {
@@ -68,6 +78,16 @@ public struct HealthData: Codable, Equatable, Sendable {
                 records: [String: DayHealthRecord] = [:]) {
         self.settings = settings
         self.records = records
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case settings, records
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.settings = try c.decodeIfPresent(HealthSettings.self, forKey: .settings) ?? .default
+        self.records = try c.decodeIfPresent([String: DayHealthRecord].self, forKey: .records) ?? [:]
     }
 }
 
