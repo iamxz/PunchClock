@@ -2,11 +2,16 @@ import Foundation
 
 public final class PunchStore {
     public private(set) var data: DakaData
+    public private(set) var didRecoverFromCorruption: Bool
+    public private(set) var corruptionBackupURL: URL?
     private let fileURL: URL
 
     public init(fileURL: URL) {
         self.fileURL = fileURL
-        self.data = PunchStore.load(from: fileURL)
+        let loaded = PunchStore.load(from: fileURL)
+        self.data = loaded.data
+        self.didRecoverFromCorruption = loaded.recovered
+        self.corruptionBackupURL = loaded.backupURL
     }
 
     public static func defaultFileURL() -> URL {
@@ -21,7 +26,8 @@ public final class PunchStore {
 
     public func mark(_ task: PunchTask, at date: Date, calendar: Calendar = .current) throws {
         let key = DakaDate.key(for: date, calendar: calendar)
-        var rec = data.records[key] ?? DayRecord()
+        let previous = data.records[key]
+        var rec = previous ?? DayRecord()
         switch task {
         case .morning:
             rec.morningDone = true
@@ -31,20 +37,31 @@ public final class PunchStore {
             rec.eveningDoneAt = date
         }
         data.records[key] = rec
-        try persist()
+        try persist(rollingBack: { self.data.records[key] = previous })
     }
 
     public func setSkipped(_ skipped: Bool, on date: Date, calendar: Calendar = .current) throws {
         let key = DakaDate.key(for: date, calendar: calendar)
-        var rec = data.records[key] ?? DayRecord()
+        let previous = data.records[key]
+        var rec = previous ?? DayRecord()
         rec.skipped = skipped
         data.records[key] = rec
-        try persist()
+        try persist(rollingBack: { self.data.records[key] = previous })
     }
 
     public func updateSettings(_ settings: Settings) throws {
+        let previous = data.settings
         data.settings = settings
-        try persist()
+        try persist(rollingBack: { self.data.settings = previous })
+    }
+
+    private func persist(rollingBack rollback: () -> Void) throws {
+        do {
+            try persist()
+        } catch {
+            rollback()
+            throw error
+        }
     }
 
     private func persist() throws {
@@ -54,21 +71,31 @@ public final class PunchStore {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         let out = try encoder.encode(data)
-        // .atomic 内部即「写临时文件 + 原子替换」。
         try out.write(to: fileURL, options: .atomic)
     }
 
-    private static func load(from url: URL) -> DakaData {
-        guard let raw = try? Data(contentsOf: url) else { return DakaData() }
+    private struct LoadResult {
+        var data: DakaData
+        var recovered: Bool
+        var backupURL: URL?
+    }
+
+    private static func load(from url: URL) -> LoadResult {
+        guard let raw = try? Data(contentsOf: url) else {
+            return LoadResult(data: DakaData(), recovered: false, backupURL: nil)
+        }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         do {
-            return try decoder.decode(DakaData.self, from: raw)
+            return LoadResult(data: try decoder.decode(DakaData.self, from: raw),
+                              recovered: false, backupURL: nil)
         } catch {
+            let stamp = Int(Date().timeIntervalSince1970 * 1000)
+            let suffix = UUID().uuidString.prefix(8)
             let backup = url.deletingLastPathComponent()
-                .appendingPathComponent("data.json.corrupt-\(Int(Date().timeIntervalSince1970))")
-            try? FileManager.default.moveItem(at: url, to: backup)
-            return DakaData()
+                .appendingPathComponent("data.json.corrupt-\(stamp)-\(suffix)")
+            let moved = (try? FileManager.default.moveItem(at: url, to: backup)) != nil
+            return LoadResult(data: DakaData(), recovered: true, backupURL: moved ? backup : nil)
         }
     }
 }

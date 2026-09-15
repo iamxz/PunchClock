@@ -86,4 +86,39 @@ final class PunchStoreTests: XCTestCase {
         XCTAssertTrue(files.contains { $0.hasPrefix("data.json.corrupt-") },
                       "expected a corrupt backup file, got \(files)")
     }
+
+    func testWorkdaysRoundTrip() throws {
+        var settings = Settings.default
+        settings.workdays = [1, 3, 5]
+        let store = PunchStore(fileURL: url)
+        try store.updateSettings(settings)
+
+        let reloaded = PunchStore(fileURL: url)
+        XCTAssertEqual(reloaded.data.settings.workdays, [1, 3, 5])
+    }
+
+    func testRecordForUnknownDayDoesNotInsert() {
+        let store = PunchStore(fileURL: url)
+        _ = store.record(for: TestTime.date(2026, 9, 14, 9, 0), calendar: TestTime.calendar)
+        XCTAssertTrue(store.data.records.isEmpty)
+    }
+
+    func testCorruptionBackupURLIsExposed() throws {
+        try "not json".data(using: .utf8)!.write(to: url)
+        let store = PunchStore(fileURL: url)
+        XCTAssertTrue(store.didRecoverFromCorruption)
+        let backup = try XCTUnwrap(store.corruptionBackupURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backup.path))
+    }
+
+    func testMarkRollsBackInMemoryOnPersistFailure() throws {
+        let blocker = dir.appendingPathComponent("blocker")
+        try "x".data(using: .utf8)!.write(to: blocker)
+        let badURL = blocker.appendingPathComponent("data.json")
+        let store = PunchStore(fileURL: badURL)
+
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        XCTAssertThrowsError(try store.mark(.morning, at: day, calendar: TestTime.calendar))
+        XCTAssertFalse(store.record(for: day, calendar: TestTime.calendar).morningDone)
+    }
 }
