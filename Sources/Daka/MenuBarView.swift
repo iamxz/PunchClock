@@ -78,9 +78,9 @@ struct MenuBarView: View {
             }
 
             HStack {
-                Image(systemName: ScheduledLaunchManager.isInstalled ? "checkmark.circle.fill" : "exclamationmark.triangle")
-                    .foregroundStyle(ScheduledLaunchManager.isInstalled ? Color.green : Color.orange)
-                Text(ScheduledLaunchManager.isInstalled ? "定点启动已启用" : "定点启动未启用")
+                Image(systemName: model.scheduledLaunchInstalled ? "checkmark.circle.fill" : "exclamationmark.triangle")
+                    .foregroundStyle(model.scheduledLaunchInstalled ? Color.green : Color.orange)
+                Text(model.scheduledLaunchInstalled ? "定点启动已启用" : "定点启动未启用")
             }
             if let warning = model.scheduledLaunchWarning {
                 Text(warning).font(.caption).foregroundStyle(.orange)

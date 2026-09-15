@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var startupWarning: String?
     @Published var scheduledLaunchWarning: String?
+    @Published var scheduledLaunchInstalled = false
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
@@ -56,7 +57,7 @@ final class AppModel: ObservableObject {
         }
         self.scheduler = scheduler
 
-        scheduledLaunchWarning = ScheduledLaunchManager.install(settings: store.data.settings)
+        installScheduledLaunch()
 
         NotificationCenter.default.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -126,10 +127,18 @@ final class AppModel: ObservableObject {
         do {
             try store.updateSettings(s)
             refreshRecord()
-            scheduledLaunchWarning = ScheduledLaunchManager.install(settings: store.data.settings)
+            installScheduledLaunch()
             scheduler?.tick()
         } catch {
             errorMessage = "设置保存失败：\(error.localizedDescription)"
+        }
+    }
+
+    private func installScheduledLaunch() {
+        ScheduledLaunchManager.install(settings: store.data.settings) { [weak self] result in
+            guard let self else { return }
+            self.scheduledLaunchInstalled = result.installed
+            self.scheduledLaunchWarning = result.warning
         }
     }
 
