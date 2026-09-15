@@ -15,18 +15,23 @@ final class GentleNotifier {
     }
 
     func notify(tasks: [PunchTask]) {
-        guard let center, !tasks.isEmpty else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "打卡提醒"
+        guard !tasks.isEmpty else { return }
+        let body: String
         if tasks.count > 1 {
-            content.body = "\(tasks.map(\.title).joined(separator: "、")) 都还没完成，记得在窗口内打卡。"
+            body = "\(tasks.map(\.title).joined(separator: "、")) 都还没完成，记得在窗口内打卡。"
         } else {
-            content.body = "\(tasks[0].title)：还在打卡窗口内，记得完成。"
+            body = "\(tasks[0].title)：还在打卡窗口内，记得完成。"
         }
+        notify(id: "daka.gentle", title: "打卡提醒", body: body)
+    }
+
+    func notify(id: String, title: String, body: String) {
+        guard let center else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
         content.sound = .default
-        let request = UNNotificationRequest(identifier: "daka.gentle",
-                                            content: content,
-                                            trigger: nil)
+        let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
         center.add(request)
     }
 }
