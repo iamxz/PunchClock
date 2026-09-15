@@ -17,12 +17,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
+        // 系统关机/注销开始时置放行；若用户取消注销，60 秒后重新封锁退出。
         NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(systemWillPowerOff(_:)),
-            name: NSWorkspace.willPowerOffNotification,
-            object: nil
-        )
+            forName: NSWorkspace.willPowerOffNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                AppModel.shared.allowTermination = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+                MainActor.assumeIsolated { AppModel.shared.allowTermination = false }
+            }
+        }
 
         let model = AppModel.shared
         let controller = MainWindowController(model: model)
@@ -44,10 +51,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if model.petVisible {
             pet.show()
         }
-    }
-
-    @objc private func systemWillPowerOff(_ notification: Notification) {
-        MainActor.assumeIsolated { AppModel.shared.allowTermination = true }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

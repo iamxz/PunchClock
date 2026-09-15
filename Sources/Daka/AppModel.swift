@@ -222,6 +222,7 @@ final class AppModel: ObservableObject {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "仍要退出")
         alert.addButton(withTitle: "取消")
+        NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         allowTermination = true
         NSApp.terminate(nil)
