@@ -28,6 +28,9 @@ final class PetWindowController: NSObject {
         window?.orderOut(nil)
     }
 
+    func showSpeech(_ text: String) {}
+    func hideSpeech() {}
+
     @objc private func saveFrame() {
         guard let window else { return }
         UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: frameKey)

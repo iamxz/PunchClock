@@ -22,6 +22,10 @@ final class AppModel: ObservableObject {
     @Published var selectedSidebar: SidebarSelection = .tool(.punch)
     let tools = ToolCatalog.all
 
+    @Published private(set) var healthSettings: HealthSettings
+    @Published private(set) var healthRecord: DayHealthRecord
+    @Published var petSpeech: String?
+
     @Published var petVisible: Bool
     weak var petWindow: PetWindowController?
 
@@ -50,13 +54,22 @@ final class AppModel: ObservableObject {
     private let clock: AdjustableClock
     private var scheduler: Scheduler?
     private var reminder: ReminderController?
+    private let healthStore: HealthStore
+    private var healthReminder: HealthReminderController?
+    private var speechClearTimer: Timer?
 
-    init(clock: AdjustableClock = AdjustableClock(), store: PunchStore? = nil) {
+    init(clock: AdjustableClock = AdjustableClock(),
+         store: PunchStore? = nil,
+         healthStore: HealthStore? = nil) {
         let resolvedStore = store ?? PunchStore(fileURL: PunchStore.defaultFileURL())
+        let resolvedHealth = healthStore ?? HealthStore(fileURL: HealthStore.defaultFileURL())
         self.clock = clock
         self.store = resolvedStore
+        self.healthStore = resolvedHealth
         self.settings = resolvedStore.data.settings
         self.record = resolvedStore.record(for: clock.now)
+        self.healthSettings = resolvedHealth.data.settings
+        self.healthRecord = resolvedHealth.record(for: clock.now)
         self.petVisible = UserDefaults.standard.object(forKey: "pet.visible") as? Bool ?? true
     }
 
@@ -68,6 +81,10 @@ final class AppModel: ObservableObject {
         if store.didRecoverFromCorruption {
             warnings.append("打卡记录文件损坏，已备份并重置。" +
                 (store.corruptionBackupURL.map { "备份：\($0.lastPathComponent)" } ?? ""))
+        }
+        if healthStore.didRecoverFromCorruption {
+            warnings.append("健康记录文件损坏，已备份并重置。" +
+                (healthStore.corruptionBackupURL.map { "备份：\($0.lastPathComponent)" } ?? ""))
         }
         if !warnings.isEmpty {
             startupWarning = warnings.joined(separator: "\n")
@@ -84,8 +101,16 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             self.reminderState = state
             self.refreshRecord()
+            self.refreshHealth()
         }
         self.scheduler = scheduler
+
+        let healthReminder = HealthReminderController(clock: clock,
+                                                      healthStore: healthStore,
+                                                      scheduleStore: store)
+        healthReminder.onSpeak = { [weak self] text in self?.say(text) }
+        self.healthReminder = healthReminder
+        healthReminder.start()
 
         installScheduledLaunch()
 
@@ -120,6 +145,87 @@ final class AppModel: ObservableObject {
     func refreshRecord() {
         record = store.record(for: clock.now)
         settings = store.data.settings
+    }
+
+    var healthStatus: HealthStatus {
+        HealthRules.status(health: healthSettings,
+                           schedule: settings,
+                           record: healthRecord,
+                           skipped: record.skipped,
+                           now: clock.now)
+    }
+
+    func refreshHealth() {
+        healthRecord = healthStore.record(for: clock.now)
+        healthSettings = healthStore.data.settings
+    }
+
+    func drinkWater() {
+        do {
+            try logHealth(.water)
+            say("咕嘟咕嘟，+1 杯！")
+        } catch {}
+    }
+
+    func standUp() {
+        do {
+            try logHealth(.movement)
+            say("走一走真舒服～")
+        } catch {}
+    }
+
+    private func logHealth(_ kind: HealthLogKind) throws {
+        errorMessage = nil
+        do {
+            try healthStore.log(kind, at: clock.now)
+            refreshHealth()
+            scheduler?.tick()
+        } catch {
+            errorMessage = "记录失败：\(error.localizedDescription)"
+            throw error
+        }
+    }
+
+    func healthStatistics(rangeDays: Int) -> HealthSummary {
+        HealthStatistics.compute(records: healthStore.data.records,
+                                 settings: healthStore.data.settings,
+                                 schedule: settings,
+                                 now: clock.now,
+                                 rangeDays: rangeDays)
+    }
+
+    func updateHealthSettings(_ mutate: (inout HealthSettings) -> Void) {
+        errorMessage = nil
+        var s = healthStore.data.settings
+        mutate(&s)
+        do {
+            try healthStore.updateSettings(s)
+            refreshHealth()
+            healthReminder?.tick()
+        } catch {
+            errorMessage = "设置保存失败：\(error.localizedDescription)"
+        }
+    }
+
+    func setWaterEnabled(_ on: Bool) { updateHealthSettings { $0.waterEnabled = on } }
+    func setWaterGoalCups(_ n: Int) { updateHealthSettings { $0.waterGoalCups = max(1, n) } }
+    func setWaterIntervalMinutes(_ n: Int) { updateHealthSettings { $0.waterIntervalMinutes = max(15, n) } }
+    func setMovementEnabled(_ on: Bool) { updateHealthSettings { $0.movementEnabled = on } }
+    func setMovementGoalCount(_ n: Int) { updateHealthSettings { $0.movementGoalCount = max(1, n) } }
+    func setMovementIntervalMinutes(_ n: Int) { updateHealthSettings { $0.movementIntervalMinutes = max(15, n) } }
+
+    func say(_ text: String) {
+        petSpeech = text
+        petWindow?.showSpeech(text)
+        speechClearTimer?.invalidate()
+        let t = Timer(timeInterval: 6, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.petSpeech = nil
+                self?.petWindow?.hideSpeech()
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        speechClearTimer = t
     }
 
     func punch(_ task: PunchTask) {
