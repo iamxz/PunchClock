@@ -201,6 +201,12 @@ final class PunchStoreTests: XCTestCase {
         XCTAssertEqual(record.morningPunches.count, 1)
         XCTAssertEqual(record.morningDoneAt?.timeIntervalSince1970 ?? 0,
                        second.timeIntervalSince1970, accuracy: 1)
+
+        let reloaded = PunchStore(fileURL: url)
+        let reloadedRecord = reloaded.record(for: day, calendar: TestTime.calendar)
+        XCTAssertEqual(reloadedRecord.morningPunches.count, 1)
+        XCTAssertEqual(reloadedRecord.morningDoneAt?.timeIntervalSince1970 ?? 0,
+                       second.timeIntervalSince1970, accuracy: 1)
     }
 
     func testRemoveLastMorningPunchMakesUndone() throws {
@@ -225,6 +231,13 @@ final class PunchStoreTests: XCTestCase {
         try store.removePunch(.morning, at: 5, on: day, calendar: TestTime.calendar)
 
         XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).morningPunches, before)
+
+        try store.mark(.evening, at: day, calendar: TestTime.calendar)
+        let eveningBefore = store.record(for: day, calendar: TestTime.calendar).eveningPunches
+        try store.updatePunch(.evening, at: 9, to: TestTime.date(2026, 9, 14, 23, 0),
+                              on: day, calendar: TestTime.calendar)
+        try store.removePunch(.evening, at: 9, on: day, calendar: TestTime.calendar)
+        XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).eveningPunches, eveningBefore)
     }
 
     func testUpdateAndRemoveEvening() throws {
@@ -240,5 +253,32 @@ final class PunchStoreTests: XCTestCase {
 
         try store.removePunch(.evening, at: 0, on: day, calendar: TestTime.calendar)
         XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).eveningPunches.count, 1)
+    }
+
+    func testUpdatePunchRollsBackInMemoryOnPersistFailure() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: day, calendar: TestTime.calendar)
+
+        try FileManager.default.removeItem(at: dir)
+        try "x".data(using: .utf8)!.write(to: dir)
+
+        let corrected = TestTime.date(2026, 9, 14, 8, 50)
+        XCTAssertThrowsError(try store.updatePunch(.morning, at: 0, to: corrected,
+                                                   on: day, calendar: TestTime.calendar))
+        XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).morningDoneAt?.timeIntervalSince1970 ?? 0,
+                       day.timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testRemovePunchRollsBackInMemoryOnPersistFailure() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: day, calendar: TestTime.calendar)
+
+        try FileManager.default.removeItem(at: dir)
+        try "x".data(using: .utf8)!.write(to: dir)
+
+        XCTAssertThrowsError(try store.removePunch(.morning, at: 0, on: day, calendar: TestTime.calendar))
+        XCTAssertTrue(store.record(for: day, calendar: TestTime.calendar).morningDone)
     }
 }
