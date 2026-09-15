@@ -65,6 +65,10 @@ struct SettingsView: View {
                 }
             }
 
+            Section("应用") {
+                Button("退出应用") { model.confirmQuit() }
+            }
+
             Section("调试") {
                 HStack {
                     Button("+10 分钟") { model.debugAdvanceClock(by: 600) }
