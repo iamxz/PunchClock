@@ -59,6 +59,8 @@ NSWorkspace.shared.notificationCenter.addObserver(
 - Cmd+Q 仍可能触发系统默认 Quit，但会走到闸门被取消，等同于无效。
 - 若用户从不主动退出，应用将跨天常驻；跨天重置、定点拉起等既有逻辑不变。
 - 系统关机通知若晚于终止询问（极端时序），`applicationShouldTerminate` 可能先返回取消；此时以「系统仍会完成关机」为准，不额外处理（macOS 关机流程对 cancel 的 app 有兜底）。
+- 「注销/关机」通知在流程**开始**时发出，用户可能中途取消。放行标志在通知后 60 秒自动复位：真实关机在数秒内就会询问并结束进程（复位无影响），被取消的注销则恢复「禁止退出」，存在不超过 60 秒的短暂可退出窗口。
+- 关机通知用 `queue: .main` 的 block 观察者（而非 selector），保证主线程投递，避免 `MainActor.assumeIsolated` 跨线程崩溃。
 - 数据与打卡逻辑（DakaCore）不涉及本次改动，无新增持久化字段。
 
 ## 6. 验证
