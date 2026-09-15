@@ -88,6 +88,11 @@ final class ReminderController: ReminderPresenting {
             window.contentView = NSHostingView(rootView: OverlayView(model: overlayModel))
             return window
         }
+
+        if !currentTasks.isEmpty {
+            for window in windows { window.makeKeyAndOrderFront(nil) }
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     private func startReassertTimer() {

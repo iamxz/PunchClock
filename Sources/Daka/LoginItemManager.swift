@@ -11,7 +11,8 @@ enum LoginItemManager {
     @discardableResult
     static func registerIfNeeded() -> String? {
         guard Bundle.main.bundlePath.hasSuffix(".app") else { return nil }
-        if SMAppService.mainApp.status == .enabled { return nil }
+        let status = SMAppService.mainApp.status
+        if status == .enabled || status == .requiresApproval { return nil }
         do {
             try SMAppService.mainApp.register()
             return nil
@@ -26,7 +27,9 @@ enum LoginItemManager {
     }
 
     static var isEnabled: Bool {
-        if SMAppService.mainApp.status == .enabled { return true }
+        let status = SMAppService.mainApp.status
+        if status == .requiresApproval { return false }
+        if status == .enabled { return true }
         return FileManager.default.fileExists(atPath: launchAgentURL.path)
     }
 

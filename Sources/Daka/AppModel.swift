@@ -105,9 +105,7 @@ final class AppModel: ObservableObject {
     }
 
     func repairLoginItem() {
-        if let registerError = LoginItemManager.registerIfNeeded() {
-            errorMessage = registerError
-        }
+        errorMessage = LoginItemManager.registerIfNeeded()
         objectWillChange.send()
     }
 
