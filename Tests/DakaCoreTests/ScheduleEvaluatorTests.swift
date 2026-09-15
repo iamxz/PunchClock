@@ -89,4 +89,16 @@ final class ScheduleEvaluatorTests: XCTestCase {
         record.morningDone = true
         XCTAssertEqual(pending(now, record: record), [.evening])
     }
+
+    func testLaunchForcedAtEarliestBoundaryYieldsMorning() {
+        let now = TestTime.date(2026, 9, 14, 6, 0)
+        XCTAssertEqual(pending(now, launchForced: true), [.morning])
+    }
+
+    func testLaunchForcedIginoredWhenMorningAlreadyDone() {
+        let now = TestTime.date(2026, 9, 14, 7, 0)
+        var record = DayRecord()
+        record.morningDone = true
+        XCTAssertEqual(pending(now, record: record, launchForced: true), [])
+    }
 }

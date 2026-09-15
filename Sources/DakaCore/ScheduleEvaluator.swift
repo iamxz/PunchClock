@@ -21,6 +21,7 @@ public struct ScheduleEvaluator {
             if let due, now >= due {
                 tasks.append(.morning)
             } else if launchForced,
+                      let due, now < due,
                       let earliest = DakaDate.date(on: now, at: settings.launchPromptEarliest, calendar: calendar),
                       now >= earliest {
                 tasks.append(.morning)
