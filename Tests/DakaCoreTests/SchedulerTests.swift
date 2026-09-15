@@ -111,6 +111,17 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(presenter.refreshCount, 0)
     }
 
+    func testStateChangeFiresOnDayRollover() {
+        let (scheduler, clock, _, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
+        var observed: [[PunchTask]] = []
+        scheduler.onStateChange = { observed.append($0) }
+
+        scheduler.tick()
+        clock.now = TestTime.date(2026, 9, 15, 8, 0)
+        scheduler.tick()
+        XCTAssertEqual(observed, [[], []])
+    }
+
     func testStateChangeFiresOnlyOnTransition() {
         let (scheduler, clock, store, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
         var observed: [[PunchTask]] = []

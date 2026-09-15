@@ -21,6 +21,7 @@ public final class Scheduler {
     private var launchForcedPending: Bool
     private var timer: Timer?
     private var lastTasks: [PunchTask]?
+    private var lastDayKey: String?
 
     public private(set) var hasPendingTasks: Bool = false
 
@@ -62,12 +63,16 @@ public final class Scheduler {
     /// 评估一次。供定时器、打卡后、唤醒/改时间后调用。
     public func tick() {
         let now = clock.now
+        let dayKey = DakaDate.key(for: now, calendar: calendar)
+        let dayChanged = dayKey != lastDayKey
+        lastDayKey = dayKey
+
         let settings = store.data.settings
         let record = store.record(for: now, calendar: calendar)
         let tasks = evaluator.pendingTasks(now: now, settings: settings, record: record,
                                            calendar: calendar, launchForced: launchForcedPending)
         consumeLaunchForceIfNeeded(now: now, settings: settings, record: record)
-        apply(tasks: tasks, now: now)
+        apply(tasks: tasks, now: now, dayChanged: dayChanged)
     }
 
     /// 开机强制项一旦「被常规日程接管」或已完成，就不再强制。
@@ -82,7 +87,7 @@ public final class Scheduler {
         }
     }
 
-    private func apply(tasks: [PunchTask], now: Date) {
+    private func apply(tasks: [PunchTask], now: Date, dayChanged: Bool) {
         hasPendingTasks = !tasks.isEmpty
         let changed = tasks != lastTasks
         if changed {
@@ -95,7 +100,7 @@ public final class Scheduler {
         } else if !tasks.isEmpty {
             presenter?.refresh(now: now)
         }
-        if changed {
+        if changed || dayChanged {
             onStateChange?(tasks)
         }
     }
