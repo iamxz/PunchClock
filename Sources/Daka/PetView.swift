@@ -13,19 +13,17 @@ struct PetView: View {
 
     var body: some View {
         ZStack {
-            BubbleShape()
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.20), radius: 3, y: 2)
+            bubble
             Text(mood.emoji)
                 .font(.system(size: 26))
-                .offset(y: -3)
+                .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
         }
         .frame(width: 52, height: 52)
         .offset(y: animate ? -3 : 3)
         .rotationEffect(.degrees(animate ? 6 : -6))
         .scaleEffect(animate ? 1.08 : 0.94)
         .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: animate)
-        .contentShape(BubbleShape())
+        .contentShape(Circle())
         .onTapGesture { onOpenPanel() }
         .contextMenu {
             Button("打开控制中心") { model.openControlCenter() }
@@ -36,23 +34,45 @@ struct PetView: View {
         .onAppear { animate = true }
         .help("点击打开 Daka 工具面板")
     }
-}
 
-/// 对话气泡：上方圆角矩形 + 左下小尾巴。
-private struct BubbleShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let tailHeight = rect.height * 0.18
-        let body = CGRect(x: rect.minX, y: rect.minY,
-                          width: rect.width, height: rect.height - tailHeight)
-        let radius = min(body.width, body.height) * 0.34
-        var path = Path()
-        path.addRoundedRect(in: body, cornerSize: CGSize(width: radius, height: radius))
+    /// 吹泡泡那种透明玻泡：淡渐变填充 + 反光边 + 高光。
+    private var bubble: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.38),
+                            Color(red: 0.62, green: 0.82, blue: 1.0).opacity(0.16),
+                            Color.white.opacity(0.30)
+                        ]),
+                        center: .center,
+                        startRadius: 1,
+                        endRadius: 27
+                    )
+                )
+                .overlay(
+                    Circle().strokeBorder(
+                        LinearGradient(colors: [.white.opacity(0.95), .white.opacity(0.20)],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing),
+                        lineWidth: 1.2
+                    )
+                )
+                .shadow(color: .black.opacity(0.14), radius: 3, y: 2)
 
-        let baseX = rect.minX + rect.width * 0.26
-        path.move(to: CGPoint(x: baseX, y: body.maxY - 1))
-        path.addLine(to: CGPoint(x: baseX + rect.width * 0.18, y: body.maxY - 1))
-        path.addLine(to: CGPoint(x: baseX - rect.width * 0.02, y: rect.maxY))
-        path.closeSubpath()
-        return path
+            Ellipse()
+                .fill(.white.opacity(0.85))
+                .frame(width: 12, height: 8)
+                .rotationEffect(.degrees(-25))
+                .blur(radius: 1.2)
+                .offset(x: -10, y: -13)
+
+            Circle()
+                .fill(.white.opacity(0.55))
+                .frame(width: 4, height: 4)
+                .blur(radius: 0.8)
+                .offset(x: 12, y: 12)
+        }
     }
 }
