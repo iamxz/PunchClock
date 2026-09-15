@@ -169,4 +169,76 @@ final class PunchStoreTests: XCTestCase {
         XCTAssertEqual(decoded.morningPunches.first?.timeIntervalSince1970 ?? 0,
                        expected.timeIntervalSince1970, accuracy: 1)
     }
+
+    func testUpdatePunchReplacesTimeInPlace() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let original = TestTime.date(2026, 9, 14, 9, 5)
+        let corrected = TestTime.date(2026, 9, 14, 8, 50)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: original, calendar: TestTime.calendar)
+        try store.updatePunch(.morning, at: 0, to: corrected, on: day, calendar: TestTime.calendar)
+
+        let record = store.record(for: day, calendar: TestTime.calendar)
+        XCTAssertEqual(record.morningPunches.count, 1)
+        XCTAssertEqual(record.morningDoneAt?.timeIntervalSince1970 ?? 0,
+                       corrected.timeIntervalSince1970, accuracy: 1)
+
+        let reloaded = PunchStore(fileURL: url)
+        XCTAssertEqual(reloaded.record(for: day, calendar: TestTime.calendar).morningDoneAt?.timeIntervalSince1970 ?? 0,
+                       corrected.timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testRemovePunchDeletesEntry() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let first = TestTime.date(2026, 9, 14, 9, 0)
+        let second = TestTime.date(2026, 9, 14, 9, 10)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: first, calendar: TestTime.calendar)
+        try store.mark(.morning, at: second, calendar: TestTime.calendar)
+        try store.removePunch(.morning, at: 0, on: day, calendar: TestTime.calendar)
+
+        let record = store.record(for: day, calendar: TestTime.calendar)
+        XCTAssertEqual(record.morningPunches.count, 1)
+        XCTAssertEqual(record.morningDoneAt?.timeIntervalSince1970 ?? 0,
+                       second.timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testRemoveLastMorningPunchMakesUndone() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: day, calendar: TestTime.calendar)
+        try store.removePunch(.morning, at: 0, on: day, calendar: TestTime.calendar)
+
+        let record = store.record(for: day, calendar: TestTime.calendar)
+        XCTAssertFalse(record.morningDone)
+        XCTAssertNil(record.morningDoneAt)
+    }
+
+    func testUpdateAndRemoveOutOfRangeAreNoOp() throws {
+        let day = TestTime.date(2026, 9, 14, 9, 0)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: day, calendar: TestTime.calendar)
+        let before = store.record(for: day, calendar: TestTime.calendar).morningPunches
+
+        try store.updatePunch(.morning, at: 5, to: TestTime.date(2026, 9, 14, 10, 0),
+                              on: day, calendar: TestTime.calendar)
+        try store.removePunch(.morning, at: 5, on: day, calendar: TestTime.calendar)
+
+        XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).morningPunches, before)
+    }
+
+    func testUpdateAndRemoveEvening() throws {
+        let day = TestTime.date(2026, 9, 14, 18, 0)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.evening, at: TestTime.date(2026, 9, 14, 18, 0), calendar: TestTime.calendar)
+        try store.mark(.evening, at: TestTime.date(2026, 9, 14, 18, 30), calendar: TestTime.calendar)
+
+        try store.updatePunch(.evening, at: 1, to: TestTime.date(2026, 9, 14, 18, 45),
+                              on: day, calendar: TestTime.calendar)
+        XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).eveningDoneAt?.timeIntervalSince1970 ?? 0,
+                       TestTime.date(2026, 9, 14, 18, 45).timeIntervalSince1970, accuracy: 1)
+
+        try store.removePunch(.evening, at: 0, on: day, calendar: TestTime.calendar)
+        XCTAssertEqual(store.record(for: day, calendar: TestTime.calendar).eveningPunches.count, 1)
+    }
 }

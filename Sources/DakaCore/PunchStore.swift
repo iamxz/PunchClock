@@ -38,6 +38,45 @@ public final class PunchStore {
         try persist(rollingBack: { self.data.records[key] = previous })
     }
 
+    public func updatePunch(_ task: PunchTask,
+                            at index: Int,
+                            to date: Date,
+                            on day: Date,
+                            calendar: Calendar = .current) throws {
+        let key = DakaDate.key(for: day, calendar: calendar)
+        let previous = data.records[key]
+        var rec = previous ?? DayRecord()
+        switch task {
+        case .morning:
+            guard rec.morningPunches.indices.contains(index) else { return }
+            rec.morningPunches[index] = date
+        case .evening:
+            guard rec.eveningPunches.indices.contains(index) else { return }
+            rec.eveningPunches[index] = date
+        }
+        data.records[key] = rec
+        try persist(rollingBack: { self.data.records[key] = previous })
+    }
+
+    public func removePunch(_ task: PunchTask,
+                            at index: Int,
+                            on day: Date,
+                            calendar: Calendar = .current) throws {
+        let key = DakaDate.key(for: day, calendar: calendar)
+        let previous = data.records[key]
+        var rec = previous ?? DayRecord()
+        switch task {
+        case .morning:
+            guard rec.morningPunches.indices.contains(index) else { return }
+            rec.morningPunches.remove(at: index)
+        case .evening:
+            guard rec.eveningPunches.indices.contains(index) else { return }
+            rec.eveningPunches.remove(at: index)
+        }
+        data.records[key] = rec
+        try persist(rollingBack: { self.data.records[key] = previous })
+    }
+
     public func setSkipped(_ skipped: Bool, on date: Date, calendar: Calendar = .current) throws {
         let key = DakaDate.key(for: date, calendar: calendar)
         let previous = data.records[key]
