@@ -33,14 +33,18 @@ func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.Termin
 
 ```swift
 NSWorkspace.shared.notificationCenter.addObserver(
-    self,
-    selector: #selector(systemWillPowerOff),
-    name: NSWorkspace.willPowerOffNotification,
-    object: nil
-)
+    forName: NSWorkspace.willPowerOffNotification,
+    object: nil,
+    queue: .main
+) { _ in
+    MainActor.assumeIsolated { AppModel.shared.allowTermination = true }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+        MainActor.assumeIsolated { AppModel.shared.allowTermination = false }
+    }
+}
 ```
 
-  收到后 `AppModel.shared.allowTermination = true`，使注销/关机/重启能正常结束进程。
+  收到后 `AppModel.shared.allowTermination = true`，使注销/关机/重启能正常结束进程；60 秒后自动复位（见 §5）。
 - 单实例逻辑（`applicationWillFinishLaunching` 中 `exit(0)`）不经过该闸门，重复启动时仍会激活已有实例并结束新进程，行为不变。
 - `applicationShouldTerminateAfterLastWindowClosed` 维持返回 `false`（关窗不退出）。
 
@@ -50,7 +54,7 @@ NSWorkspace.shared.notificationCenter.addObserver(
   - `MenuBarView.swift` 菜单栏面板删除「退出」按钮。
   - `PetView.swift` 桌宠右键菜单删除「退出 Daka」。
   - `ToolPanelView.swift` 浮动工具面板删除「退出」按钮。
-- `AppModel.quit()` 改名/收敛为确认退出：`confirmQuit()`，弹出 `NSAlert`（标题「退出 Daka？」，说明「退出后将无法提醒打卡，直到下次开机或手动启动。」，按钮「仍要退出」/「取消」）；确认后 `allowTermination = true` 再 `NSApp.terminate(nil)`。取消则不改状态。
+- `AppModel.quit()` 改名/收敛为确认退出：`confirmQuit()`，弹出 `NSAlert`（标题「退出 Daka？」，说明「退出后将无法提醒打卡，直到下次开机或手动启动。」，按钮「取消」/「仍要退出」，**「取消」为默认按钮**，避免误按回车退出）；确认后 `allowTermination = true` 再 `NSApp.terminate(nil)`。取消则不改状态。
 - **设置页** `SettingsView` 新增「应用」Section，含「退出应用」按钮，点击调用 `model.confirmQuit()`。
 - 随退出按钮一并清理只在禁用退出时用到的 `.disabled(model.hasHardTasks)`；确认无其他引用后删除 `AppModel.hasHardTasks`，避免死代码。`ReminderState.hard` 本身仍用于遮罩与图标判定，保留。
 
