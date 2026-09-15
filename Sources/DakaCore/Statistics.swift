@@ -1,0 +1,137 @@
+import Foundation
+
+public struct DailyStat: Equatable, Sendable {
+    public let dateKey: String
+    public let weekday: Int
+    public let isWorkday: Bool
+    public let completedBoth: Bool
+    public let skipped: Bool
+    public let morningDoneAt: Date?
+    public let eveningDoneAt: Date?
+    public let workDuration: TimeInterval?
+
+    public init(dateKey: String,
+                weekday: Int,
+                isWorkday: Bool,
+                completedBoth: Bool,
+                skipped: Bool,
+                morningDoneAt: Date?,
+                eveningDoneAt: Date?,
+                workDuration: TimeInterval?) {
+        self.dateKey = dateKey
+        self.weekday = weekday
+        self.isWorkday = isWorkday
+        self.completedBoth = completedBoth
+        self.skipped = skipped
+        self.morningDoneAt = morningDoneAt
+        self.eveningDoneAt = eveningDoneAt
+        self.workDuration = workDuration
+    }
+}
+
+public struct StatisticsSummary: Equatable, Sendable {
+    public var days: [DailyStat]
+    public var rangeDays: Int
+    public var monthPunchDays: Int
+    public var currentStreak: Int
+    public var averageWorkDuration: TimeInterval?
+    public var missedDays: Int
+
+    public init(days: [DailyStat] = [],
+                rangeDays: Int = 0,
+                monthPunchDays: Int = 0,
+                currentStreak: Int = 0,
+                averageWorkDuration: TimeInterval? = nil,
+                missedDays: Int = 0) {
+        self.days = days
+        self.rangeDays = rangeDays
+        self.monthPunchDays = monthPunchDays
+        self.currentStreak = currentStreak
+        self.averageWorkDuration = averageWorkDuration
+        self.missedDays = missedDays
+    }
+}
+
+public enum Statistics {
+    public static func compute(records: [String: DayRecord],
+                               settings: Settings,
+                               now: Date,
+                               rangeDays: Int,
+                               calendar: Calendar = .current) -> StatisticsSummary {
+        let range = max(1, rangeDays)
+        let nowMonth = calendar.dateComponents([.year, .month], from: now)
+        let eveningDeadlineToday = DakaDate.date(on: now, at: settings.eveningDeadline, calendar: calendar)
+
+        var days: [DailyStat] = []
+        var durations: [TimeInterval] = []
+        var monthPunch = 0
+        var missed = 0
+
+        for offset in stride(from: range - 1, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: now) else { continue }
+            let key = DakaDate.key(for: day, calendar: calendar)
+            let record = records[key] ?? DayRecord()
+            let weekday = DakaDate.weekday(of: day, calendar: calendar)
+            let isWorkday = settings.workdays.contains(weekday)
+            let completedBoth = record.morningDone && record.eveningDone
+
+            var duration: TimeInterval?
+            if let morning = record.morningDoneAt, let evening = record.eveningDoneAt, evening >= morning {
+                duration = evening.timeIntervalSince(morning)
+            }
+            if let duration { durations.append(duration) }
+
+            days.append(DailyStat(dateKey: key, weekday: weekday, isWorkday: isWorkday,
+                                  completedBoth: completedBoth, skipped: record.skipped,
+                                  morningDoneAt: record.morningDoneAt,
+                                  eveningDoneAt: record.eveningDoneAt,
+                                  workDuration: duration))
+
+            if isWorkday && completedBoth {
+                let dayMonth = calendar.dateComponents([.year, .month], from: day)
+                if dayMonth.year == nowMonth.year && dayMonth.month == nowMonth.month {
+                    monthPunch += 1
+                }
+            }
+
+            if isWorkday && !record.skipped && !completedBoth {
+                let isToday = calendar.isDate(day, inSameDayAs: now)
+                let expired = !isToday || (eveningDeadlineToday.map { now >= $0 } ?? false)
+                if expired { missed += 1 }
+            }
+        }
+
+        let average = durations.isEmpty ? nil : durations.reduce(0, +) / Double(durations.count)
+
+        let todayKey = DakaDate.key(for: now, calendar: calendar)
+        let todayRecord = records[todayKey] ?? DayRecord()
+        let todayCompleted = todayRecord.morningDone && todayRecord.eveningDone
+        let todayIsWorkday = settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar))
+        let todayInProgress = todayIsWorkday && !todayRecord.skipped && !todayCompleted
+            && (eveningDeadlineToday.map { now < $0 } ?? true)
+
+        var cursor = calendar.startOfDay(for: now)
+        if todayInProgress, let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor) {
+            cursor = yesterday
+        }
+        var streak = 0
+        for _ in 0..<400 {
+            let key = DakaDate.key(for: cursor, calendar: calendar)
+            let record = records[key] ?? DayRecord()
+            let isWorkday = settings.workdays.contains(DakaDate.weekday(of: cursor, calendar: calendar))
+            if isWorkday && !record.skipped {
+                if record.morningDone && record.eveningDone {
+                    streak += 1
+                } else {
+                    break
+                }
+            }
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+
+        return StatisticsSummary(days: days, rangeDays: range,
+                                 monthPunchDays: monthPunch, currentStreak: streak,
+                                 averageWorkDuration: average, missedDays: missed)
+    }
+}
