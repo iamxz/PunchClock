@@ -9,37 +9,29 @@ public enum LaunchAgentPlist {
                             eveningWindowStart: String,
                             eveningDeadline: String,
                             bundleID: String) -> String {
-        let times: [(hour: Int, minute: Int)] = [
-            morningWindowStart, morningDeadline, eveningWindowStart, eveningDeadline
-        ].compactMap { DakaDate.timeComponents($0).map { (hour: $0.hour, minute: $0.minute) } }
-
-        var intervals = ""
-        for time in times {
-            intervals += "        <dict>\n"
-            intervals += "            <key>Hour</key>\n"
-            intervals += "            <integer>\(time.hour)</integer>\n"
-            intervals += "            <key>Minute</key>\n"
-            intervals += "            <integer>\(time.minute)</integer>\n"
-            intervals += "        </dict>\n"
+        var intervals: [[String: Int]] = []
+        for hhmm in [morningWindowStart, morningDeadline, eveningWindowStart, eveningDeadline] {
+            guard let time = DakaDate.timeComponents(hhmm) else { continue }
+            let entry = ["Hour": time.hour, "Minute": time.minute]
+            if !intervals.contains(entry) {
+                intervals.append(entry)
+            }
         }
 
-        return """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key><string>\(label)</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>/usr/bin/open</string>
-                <string>-b</string>
-                <string>\(bundleID)</string>
-            </array>
-            <key>StartCalendarInterval</key>
-            <array>
-        \(intervals)    </array>
-        </dict>
-        </plist>
-        """
+        var plist: [String: Any] = [
+            "Label": label,
+            "ProgramArguments": ["/usr/bin/open", "-b", bundleID]
+        ]
+        if !intervals.isEmpty {
+            plist["StartCalendarInterval"] = intervals
+        }
+
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: plist,
+                                                             format: .xml,
+                                                             options: 0),
+              let xml = String(data: data, encoding: .utf8) else {
+            return ""
+        }
+        return xml
     }
 }

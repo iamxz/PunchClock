@@ -2,6 +2,44 @@ import XCTest
 @testable import DakaCore
 
 final class LaunchAgentPlistTests: XCTestCase {
+    func testLabelAndProgramArguments() throws {
+        let dict = try parse(makePlist())
+        XCTAssertEqual(dict["Label"] as? String, "com.xue.daka.schedule")
+        XCTAssertEqual(dict["ProgramArguments"] as? [String],
+                       ["/usr/bin/open", "-b", "com.xue.daka"])
+    }
+
+    func testFourCalendarTimes() throws {
+        let entries = try intervals(makePlist())
+        XCTAssertEqual(entries.count, 4)
+        XCTAssertTrue(entries.contains(["Hour": 9, "Minute": 0]))
+        XCTAssertTrue(entries.contains(["Hour": 9, "Minute": 30]))
+        XCTAssertTrue(entries.contains(["Hour": 18, "Minute": 0]))
+        XCTAssertTrue(entries.contains(["Hour": 18, "Minute": 30]))
+    }
+
+    func testNoRunAtLoad() throws {
+        XCTAssertNil(try parse(makePlist())["RunAtLoad"])
+    }
+
+    func testInvalidTimeStringsAreSkipped() throws {
+        XCTAssertEqual(try intervals(makePlist(morningWindowStart: "oops")).count, 3)
+    }
+
+    func testAllInvalidYieldsNoIntervalKey() throws {
+        let dict = try parse(makePlist(morningWindowStart: "x", morningDeadline: "y",
+                                       eveningWindowStart: "z", eveningDeadline: "w"))
+        XCTAssertNil(dict["StartCalendarInterval"])
+    }
+
+    func testDuplicateTimesAreDeduped() throws {
+        let entries = try intervals(makePlist(morningWindowStart: "09:00",
+                                              morningDeadline: "09:00"))
+        XCTAssertEqual(entries.count, 3)
+    }
+
+    // MARK: - Helpers
+
     private func makePlist(morningWindowStart: String = "09:00",
                            morningDeadline: String = "09:30",
                            eveningWindowStart: String = "18:00",
@@ -13,54 +51,14 @@ final class LaunchAgentPlistTests: XCTestCase {
                               bundleID: "com.xue.daka")
     }
 
-    func testContainsLabelAndOpenInvocation() {
-        let plist = makePlist()
-        XCTAssertTrue(plist.contains("<string>com.xue.daka.schedule</string>"))
-        XCTAssertTrue(plist.contains("/usr/bin/open"))
-        XCTAssertTrue(plist.contains("<string>-b</string>"))
-        XCTAssertTrue(plist.contains("<string>com.xue.daka</string>"))
+    private func parse(_ plist: String) throws -> [String: Any] {
+        let object = try PropertyListSerialization.propertyList(from: Data(plist.utf8),
+                                                               options: [],
+                                                               format: nil)
+        return try XCTUnwrap(object as? [String: Any])
     }
 
-    func testContainsFourCalendarTimes() {
-        let plist = makePlist()
-        let hours = timePairs(in: plist)
-        XCTAssertEqual(hours.count, 4)
-        XCTAssertTrue(hours.contains { $0 == (9, 0) })
-        XCTAssertTrue(hours.contains { $0 == (9, 30) })
-        XCTAssertTrue(hours.contains { $0 == (18, 0) })
-        XCTAssertTrue(hours.contains { $0 == (18, 30) })
-    }
-
-    func testDoesNotRunAtLoad() {
-        let plist = makePlist()
-        XCTAssertFalse(plist.contains("RunAtLoad"))
-    }
-
-    func testInvalidTimeStringsAreSkipped() {
-        let plist = makePlist(morningWindowStart: "oops")
-        XCTAssertEqual(timePairs(in: plist).count, 3)
-    }
-
-    /// 从 plist 文本里提取所有 (Hour, Minute) 对，按出现顺序。
-    private func timePairs(in plist: String) -> [(Int, Int)] {
-        var result: [(Int, Int)] = []
-        let lines = plist.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
-        var i = 0
-        while i < lines.count {
-            if lines[i].contains("<key>Hour</key>"),
-               i + 2 < lines.count, lines[i + 1].contains("<integer>"),
-               lines[i + 2].contains("<key>Minute</key>"),
-               i + 3 < lines.count, lines[i + 3].contains("<integer>") {
-                let hour = Int(lines[i + 1].replacingOccurrences(of: "<integer>", with: "")
-                    .replacingOccurrences(of: "</integer>", with: "")) ?? -1
-                let minute = Int(lines[i + 3].replacingOccurrences(of: "<integer>", with: "")
-                    .replacingOccurrences(of: "</integer>", with: "")) ?? -1
-                result.append((hour, minute))
-                i += 4
-                continue
-            }
-            i += 1
-        }
-        return result
+    private func intervals(_ plist: String) throws -> [[String: Int]] {
+        try XCTUnwrap(try parse(plist)["StartCalendarInterval"] as? [[String: Int]])
     }
 }
