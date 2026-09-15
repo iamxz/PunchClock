@@ -8,7 +8,9 @@ struct PetView: View {
     @State private var animate = false
 
     private var mood: PetMood {
-        PetMood.resolve(reminderState: model.reminderState, now: model.now)
+        PetMood.resolve(reminderState: model.reminderState,
+                        now: model.now,
+                        health: model.healthStatus)
     }
 
     var body: some View {
