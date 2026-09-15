@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var reminderState = ReminderState()
     @Published var errorMessage: String?
     @Published var startupWarning: String?
+    @Published var scheduledLaunchWarning: String?
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
@@ -54,6 +55,8 @@ final class AppModel: ObservableObject {
             self.refreshRecord()
         }
         self.scheduler = scheduler
+
+        scheduledLaunchWarning = ScheduledLaunchManager.install(settings: store.data.settings)
 
         NotificationCenter.default.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -123,6 +126,7 @@ final class AppModel: ObservableObject {
         do {
             try store.updateSettings(s)
             refreshRecord()
+            scheduledLaunchWarning = ScheduledLaunchManager.install(settings: store.data.settings)
             scheduler?.tick()
         } catch {
             errorMessage = "设置保存失败：\(error.localizedDescription)"
