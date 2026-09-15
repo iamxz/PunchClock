@@ -38,20 +38,17 @@ public struct Settings: Codable, Equatable, Sendable {
 }
 
 public struct DayRecord: Codable, Equatable, Sendable {
-    public var date: String
     public var morningDone: Bool
     public var morningDoneAt: Date?
     public var eveningDone: Bool
     public var eveningDoneAt: Date?
     public var skipped: Bool
 
-    public init(date: String,
-                morningDone: Bool = false,
+    public init(morningDone: Bool = false,
                 morningDoneAt: Date? = nil,
                 eveningDone: Bool = false,
                 eveningDoneAt: Date? = nil,
                 skipped: Bool = false) {
-        self.date = date
         self.morningDone = morningDone
         self.morningDoneAt = morningDoneAt
         self.eveningDone = eveningDone
