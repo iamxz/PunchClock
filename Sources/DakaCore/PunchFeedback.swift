@@ -15,7 +15,7 @@ public enum PunchFeedback {
                 return nil
             }
             let hours = settings.minWorkDurationHours
-            let time = timeFormatter.string(from: punchedAt)
+            let time = timeText(punchedAt, calendar: calendar)
             guard let morning = record.morningDoneAt else {
                 return "已记录 \(time)；今天还没有上班打卡，需先打上班卡；下班需满 \(hoursText(hours)) 小时才算完成。"
             }
@@ -40,9 +40,8 @@ public enum PunchFeedback {
         return "\(m) 分钟"
     }
 
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f
-    }()
+    private static func timeText(_ date: Date, calendar: Calendar) -> String {
+        let c = calendar.dateComponents([.hour, .minute], from: date)
+        return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+    }
 }

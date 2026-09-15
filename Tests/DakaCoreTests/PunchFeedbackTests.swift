@@ -44,6 +44,21 @@ final class PunchFeedbackTests: XCTestCase {
         XCTAssertTrue(message?.contains("还没有上班打卡") ?? false, message ?? "nil")
     }
 
+    func testUsesInjectedCalendarTimeZone() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+
+        var settings = Settings.default
+        settings.minWorkDurationHours = 8
+        let morning = utc.date(from: DateComponents(year: 2026, month: 9, day: 14, hour: 1, minute: 0))!
+        let evening = utc.date(from: DateComponents(year: 2026, month: 9, day: 14, hour: 8, minute: 0))!
+        let record = DayRecord(morningPunches: [morning], eveningPunches: [evening])
+
+        let message = PunchFeedback.text(task: .evening, record: record, settings: settings,
+                                         punchedAt: evening, calendar: utc)
+        XCTAssertTrue(message?.contains("08:00") ?? false, message ?? "nil")
+    }
+
     func testRemainingUnderOneMinute() {
         let morning = TestTime.date(2026, 9, 14, 9, 0)
         let evening = TestTime.date(2026, 9, 14, 16, 59, 30)
