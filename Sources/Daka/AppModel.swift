@@ -25,6 +25,9 @@ final class AppModel: ObservableObject {
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
+    /// 唯一放行退出的开关：设置页确认退出、或系统关机时置 true。
+    var allowTermination = false
+
     var now: Date { clock.now }
 
     var minWorkDuration: TimeInterval { settings.minWorkDuration }
@@ -209,6 +212,18 @@ final class AppModel: ObservableObject {
     }
 
     func quit() {
+        NSApp.terminate(nil)
+    }
+
+    func confirmQuit() {
+        let alert = NSAlert()
+        alert.messageText = "退出 Daka？"
+        alert.informativeText = "退出后将无法提醒打卡，直到下次开机或手动启动。"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "仍要退出")
+        alert.addButton(withTitle: "取消")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        allowTermination = true
         NSApp.terminate(nil)
     }
 }

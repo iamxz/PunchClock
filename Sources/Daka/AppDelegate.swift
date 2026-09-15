@@ -17,6 +17,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(systemWillPowerOff(_:)),
+            name: NSWorkspace.willPowerOffNotification,
+            object: nil
+        )
+
         let model = AppModel.shared
         let controller = MainWindowController(model: model)
         self.mainWindow = controller
@@ -39,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func systemWillPowerOff(_ notification: Notification) {
+        MainActor.assumeIsolated { AppModel.shared.allowTermination = true }
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { mainWindow?.show() }
         return true
@@ -49,7 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let hard = MainActor.assumeIsolated { AppModel.shared.hasHardTasks }
-        return hard ? .terminateCancel : .terminateNow
+        MainActor.assumeIsolated { AppModel.shared.allowTermination } ? .terminateNow : .terminateCancel
     }
 }
