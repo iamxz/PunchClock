@@ -43,7 +43,11 @@ struct ControlCenterView: View {
             let morning = model.record.morningDone ? "上班已完成" : "上班待打卡"
             let evening = model.isEveningComplete ? "下班已完成" : "下班待打卡"
             return "\(morning) · \(evening)"
-        default:
+        case .water:
+            return "今日 \(model.healthStatus.cups)/\(model.healthSettings.waterGoalCups) 杯"
+        case .sedentary:
+            return "已起身 \(model.healthStatus.stands) 次"
+        case .eye:
             return "即将推出"
         }
     }
@@ -58,8 +62,12 @@ struct ControlCenterView: View {
         switch selection {
         case .tool(.punch):
             PunchToolView(model: model)
-        case .tool(let id):
-            ComingSoonView(metadata: ToolCatalog.metadata(for: id))
+        case .tool(.water):
+            WaterToolView(model: model)
+        case .tool(.sedentary):
+            MovementToolView(model: model)
+        case .tool(.eye):
+            ComingSoonView(metadata: ToolCatalog.metadata(for: .eye))
         case .settings(.schedule):
             ScheduleSettingsView(model: model)
         case .settings(.workdays):
