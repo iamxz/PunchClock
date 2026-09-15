@@ -55,6 +55,8 @@ final class HealthReminderController {
         let status = HealthRules.status(health: health, schedule: schedule,
                                         record: record, skipped: skipped, now: now)
 
+        var speech: String?
+
         if status.waterDue {
             let every = TimeInterval(health.effectiveWaterIntervalMinutes * 60)
             if lastWaterNoticeAt.map({ now.timeIntervalSince($0) >= every }) ?? true {
@@ -63,8 +65,10 @@ final class HealthReminderController {
                 notifier.notify(id: "daka.water",
                                 title: "该喝水啦 💧",
                                 body: "已经 \(minutes) 分钟没喝水了，起来接杯水吧。")
-                onSpeak?("该喝水啦～💧")
+                speech = "该喝水啦～💧"
             }
+        } else {
+            lastWaterNoticeAt = nil
         }
 
         if status.movementDue {
@@ -75,8 +79,12 @@ final class HealthReminderController {
                 notifier.notify(id: "daka.movement",
                                 title: "起来走两步 🚶",
                                 body: "坐了 \(minutes) 分钟，活动一下肩颈和腿吧。")
-                onSpeak?("坐太久啦，起来走两步 🚶")
+                if speech == nil { speech = "坐太久啦，起来走两步 🚶" }
             }
+        } else {
+            lastMovementNoticeAt = nil
         }
+
+        if let speech { onSpeak?(speech) }
     }
 }
