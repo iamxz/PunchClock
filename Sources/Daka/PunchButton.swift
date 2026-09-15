@@ -14,7 +14,7 @@ final class PunchPressModel: ObservableObject {
         let steps = 60
         var step = 0
         let interval = duration / Double(steps)
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
+        let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] timer in
             MainActor.assumeIsolated {
                 guard let self else { timer.invalidate(); return }
                 step += 1
@@ -28,6 +28,8 @@ final class PunchPressModel: ObservableObject {
                 }
             }
         }
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
     }
 
     func cancel() {
@@ -68,6 +70,13 @@ struct PunchButton: View {
                     }
                     .onEnded { _ in press.cancel() }
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(task?.title ?? "打卡已完成"))
+            .accessibilityHint(Text(task == nil ? "今日两次打卡都已完成" : "长按 3 秒完成打卡，或使用旁白操作直接完成"))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: Text("完成打卡")) {
+                if let task { onComplete(task) }
+            }
 
             if task != nil {
                 Text("长按 3 秒完成打卡")
@@ -76,6 +85,9 @@ struct PunchButton: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .onChange(of: task) { _, _ in
+            press.cancel()
+        }
     }
 
     private var tint: Color {
