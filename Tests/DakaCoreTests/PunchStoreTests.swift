@@ -146,6 +146,9 @@ final class PunchStoreTests: XCTestCase {
         let record = store.record(for: first, calendar: TestTime.calendar)
         XCTAssertEqual(record.eveningPunches.count, 2)
         XCTAssertEqual(record.eveningDoneAt?.timeIntervalSince1970 ?? 0, second.timeIntervalSince1970, accuracy: 1)
+
+        let reloaded = PunchStore(fileURL: url)
+        XCTAssertEqual(reloaded.record(for: first, calendar: TestTime.calendar).eveningPunches.count, 2)
     }
 
     func testLegacyRecordDecodesToPunchList() throws {
@@ -162,5 +165,8 @@ final class PunchStoreTests: XCTestCase {
         XCTAssertEqual(decoded.morningPunches.count, 1)
         XCTAssertTrue(decoded.morningDone)
         XCTAssertFalse(decoded.eveningDone)
+        let expected = ISO8601DateFormatter().date(from: "2026-09-14T01:00:00Z")!
+        XCTAssertEqual(decoded.morningPunches.first?.timeIntervalSince1970 ?? 0,
+                       expected.timeIntervalSince1970, accuracy: 1)
     }
 }

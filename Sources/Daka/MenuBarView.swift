@@ -10,12 +10,14 @@ struct MenuBarView: View {
 
             VStack(spacing: 6) {
                 statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
+                          count: model.record.morningPunches.count,
                           start: model.settings.morningWindowStart, deadline: model.settings.morningDeadline)
                 statusRow(.evening, done: model.record.eveningDone, at: model.record.eveningDoneAt,
+                          count: model.record.eveningPunches.count,
                           start: model.settings.eveningWindowStart, deadline: model.settings.eveningDeadline)
             }
 
-            PunchButton(task: pendingTask) { task in
+            PunchButton(task: PunchTarget.resolve(record: model.record, now: model.now)) { task in
                 model.punch(task)
             }
 
@@ -33,26 +35,21 @@ struct MenuBarView: View {
         .frame(width: 220)
     }
 
-    private var pendingTask: PunchTask? {
-        if !model.record.morningDone { return .morning }
-        if !model.record.eveningDone { return .evening }
-        return nil
-    }
-
     private var scheduleInactive: Bool {
         !model.settings.enabled
             || model.record.skipped
             || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
-    private func statusRow(_ task: PunchTask, done: Bool, at: Date?, start: String, deadline: String) -> some View {
+    private func statusRow(_ task: PunchTask, done: Bool, at: Date?, count: Int, start: String, deadline: String) -> some View {
         HStack {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(done ? Color.green : Color.secondary)
             Text(task.title)
             Spacer()
             if done, let at {
-                Text(Self.timeFormatter.string(from: at)).foregroundStyle(.secondary)
+                Text(count > 1 ? "\(Self.timeFormatter.string(from: at))（\(count) 次）" : Self.timeFormatter.string(from: at))
+                    .foregroundStyle(.secondary)
             } else if scheduleInactive {
                 Text("今日不提醒").foregroundStyle(.secondary)
             } else if model.reminderState.hard.contains(task) {

@@ -41,7 +41,7 @@ final class PunchPressModel: ObservableObject {
 }
 
 struct PunchButton: View {
-    let task: PunchTask?
+    let task: PunchTask
     let onComplete: (PunchTask) -> Void
 
     @StateObject private var press = PunchPressModel()
@@ -55,46 +55,32 @@ struct PunchButton: View {
                     .trim(from: 0, to: press.progress)
                     .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text(task?.title ?? "已完成")
+                Text(task.title)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(task == nil ? Color.secondary : tint)
+                    .foregroundStyle(tint)
             }
             .frame(width: 108, height: 108)
             .contentShape(Circle())
-            .opacity(task == nil ? 0.6 : 1)
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        guard let task else { return }
-                        press.start { onComplete(task) }
-                    }
+                    .onChanged { _ in press.start { onComplete(task) } }
                     .onEnded { _ in press.cancel() }
             )
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(task?.title ?? "打卡已完成"))
-            .accessibilityHint(Text(task == nil ? "今日两次打卡都已完成" : "长按 3 秒完成打卡，或使用旁白操作直接完成"))
+            .accessibilityLabel(Text(task.title))
+            .accessibilityHint(Text("长按 3 秒完成打卡；旁白可直接操作"))
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction(named: Text("完成打卡")) {
-                if let task { onComplete(task) }
-            }
+            .accessibilityAction(named: Text("完成打卡")) { onComplete(task) }
 
-            if task != nil {
-                Text("长按 3 秒完成打卡")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Text("长按 3 秒打卡（可重复）")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .onChange(of: task) { _, _ in
-            press.cancel()
-        }
+        .onChange(of: task) { _, _ in press.cancel() }
     }
 
     private var tint: Color {
-        switch task {
-        case .morning: return .green
-        case .evening: return .blue
-        case nil: return .secondary
-        }
+        task == .morning ? .green : .blue
     }
 }
