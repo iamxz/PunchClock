@@ -47,9 +47,15 @@ final class PetWindowController: NSObject {
         panel.contentView = NSHostingView(rootView: PetSpeechBubble(text: text))
 
         let petFrame = window.frame
-        let origin = NSPoint(x: petFrame.midX - size.width / 2,
-                             y: petFrame.maxY + 6)
-        panel.setFrameOrigin(origin)
+        let screen = window.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? petFrame
+        let x = min(max(petFrame.midX - size.width / 2, visible.minX + 4),
+                    visible.maxX - size.width - 4)
+        var y = petFrame.maxY + 6
+        if y + size.height > visible.maxY {
+            y = petFrame.minY - size.height - 6
+        }
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
 
         bubbleWindow?.orderOut(nil)
         panel.orderFrontRegardless()
