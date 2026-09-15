@@ -6,6 +6,7 @@ final class PetWindowController: NSObject {
     private let model: AppModel
     private var window: NSWindow?
     private var popover: NSPopover?
+    private var bubbleWindow: NSWindow?
     private let frameKey = "pet.frame"
     private let petSize = NSSize(width: 52, height: 52)
 
@@ -25,11 +26,40 @@ final class PetWindowController: NSObject {
 
     func hide() {
         popover?.close()
+        hideSpeech()
         window?.orderOut(nil)
     }
 
-    func showSpeech(_ text: String) {}
-    func hideSpeech() {}
+    func showSpeech(_ text: String) {
+        guard !text.isEmpty, let window, window.isVisible else { return }
+        let size = NSSize(width: 220, height: 52)
+        let panel = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                             styleMask: [.borderless],
+                             backing: .buffered,
+                             defer: false)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.ignoresMouseEvents = true
+        panel.isReleasedWhenClosed = false
+        panel.contentView = NSHostingView(rootView: PetSpeechBubble(text: text))
+
+        let petFrame = window.frame
+        let origin = NSPoint(x: petFrame.midX - size.width / 2,
+                             y: petFrame.maxY + 6)
+        panel.setFrameOrigin(origin)
+
+        bubbleWindow?.orderOut(nil)
+        panel.orderFrontRegardless()
+        bubbleWindow = panel
+    }
+
+    func hideSpeech() {
+        bubbleWindow?.orderOut(nil)
+        bubbleWindow = nil
+    }
 
     @objc private func saveFrame() {
         guard let window else { return }
