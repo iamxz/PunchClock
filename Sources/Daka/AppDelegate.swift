@@ -2,6 +2,7 @@ import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: MainWindowController?
+    private var petWindow: PetWindowController?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
@@ -21,6 +22,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.mainWindow = controller
         model.mainWindow = controller
 
+        let pet = PetWindowController(model: model)
+        self.petWindow = pet
+        model.petWindow = pet
+
         model.start()
 
         let isBackground = CommandLine.arguments.contains("--background")
@@ -28,6 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isUserLaunch = (notification.userInfo?[launchKey] as? Bool) ?? true
         if !isBackground && isUserLaunch {
             controller.show()
+        }
+        if model.petVisible {
+            pet.show()
         }
     }
 

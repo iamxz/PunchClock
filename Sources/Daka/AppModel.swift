@@ -18,6 +18,9 @@ final class AppModel: ObservableObject {
     @Published var selectedTool: ToolID = .punch
     let tools = ToolCatalog.all
 
+    @Published var petVisible: Bool
+    weak var petWindow: PetWindowController?
+
     weak var mainWindow: MainWindowController?
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
@@ -49,6 +52,7 @@ final class AppModel: ObservableObject {
         self.store = resolvedStore
         self.settings = resolvedStore.data.settings
         self.record = resolvedStore.record(for: clock.now)
+        self.petVisible = UserDefaults.standard.object(forKey: "pet.visible") as? Bool ?? true
     }
 
     func start() {
@@ -189,6 +193,12 @@ final class AppModel: ObservableObject {
     func openControlCenter(selecting id: ToolID? = nil) {
         if let id { selectedTool = id }
         mainWindow?.show()
+    }
+
+    func setPetVisible(_ visible: Bool) {
+        petVisible = visible
+        UserDefaults.standard.set(visible, forKey: "pet.visible")
+        if visible { petWindow?.show() } else { petWindow?.hide() }
     }
 
     func statistics(rangeDays: Int) -> StatisticsSummary {
