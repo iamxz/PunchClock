@@ -13,9 +13,13 @@ struct MenuBarView: View {
                     model.openControlCenter()
                 } label: {
                     Image(systemName: "switch.2")
+                        .imageScale(.large)
+                        .padding(4)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .help("打开控制中心")
+                .accessibilityLabel("控制中心")
             }
 
             VStack(spacing: 6) {
