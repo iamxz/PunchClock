@@ -66,8 +66,12 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         let desired = settings.effectiveReminderIntervalSeconds
         if desired != reassertInterval {
             reassertInterval = desired
-            stopReassertTimer()
-            startReassertTimer()
+            if snoozeTimer != nil {
+                scheduleSnooze()
+            } else {
+                stopReassertTimer()
+                startReassertTimer()
+            }
         }
         rebuildWindowsIfNeeded()
     }
@@ -110,7 +114,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
             return window
         }
 
-        if !currentTasks.isEmpty {
+        if !currentTasks.isEmpty, snoozeTimer == nil {
             for window in windows { window.makeKeyAndOrderFront(nil) }
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -138,6 +142,10 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         guard !currentTasks.isEmpty else { return }
         stopReassertTimer()
         for w in windows { w.orderOut(nil) }
+        scheduleSnooze()
+    }
+
+    private func scheduleSnooze() {
         snoozeTimer?.invalidate()
         let t = Timer(timeInterval: reassertInterval, repeats: false) { [weak self] _ in
             Task { @MainActor in self?.resume() }
