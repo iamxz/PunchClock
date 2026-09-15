@@ -6,13 +6,8 @@ final class LaunchAgentPlistTests: XCTestCase {
         let dict = try parse(makePlist())
         XCTAssertEqual(dict["Label"] as? String, "com.xue.daka.schedule")
         let args = try XCTUnwrap(dict["ProgramArguments"] as? [String])
-        XCTAssertEqual(args.count, 3)
-        XCTAssertEqual(args[0], "/bin/sh")
-        XCTAssertEqual(args[1], "-c")
-        let script = args[2]
-        XCTAssertTrue(script.contains("/usr/bin/pgrep -x Daka"))
-        XCTAssertTrue(script.contains("/usr/bin/open -b com.xue.daka"))
-        XCTAssertTrue(script.contains("--args --background"))
+        XCTAssertEqual(args, ["/bin/sh", "-c",
+                              "/usr/bin/pgrep -u \"$(id -u)\" -x Daka >/dev/null 2>&1 || /usr/bin/open -b com.xue.daka --args --background"])
     }
 
     func testFourCalendarTimes() throws {
