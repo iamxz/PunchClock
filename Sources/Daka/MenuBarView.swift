@@ -13,6 +13,13 @@ struct MenuBarView: View {
             statusRow(task: .evening, done: model.record.eveningDone,
                       at: model.record.eveningDoneAt, due: model.settings.eveningTime)
 
+            HStack {
+                Button("上班打卡") { model.punch(.morning) }
+                    .disabled(model.record.morningDone)
+                Button("下班打卡") { model.punch(.evening) }
+                    .disabled(model.record.eveningDone)
+            }
+
             Divider()
 
             if model.record.skipped {
@@ -47,9 +54,13 @@ struct MenuBarView: View {
             HStack {
                 Image(systemName: LoginItemManager.isEnabled ? "checkmark.circle.fill" : "exclamationmark.triangle")
                     .foregroundStyle(LoginItemManager.isEnabled ? Color.green : Color.orange)
-                Text(LoginItemManager.isEnabled ? "开机自启已启用" : "开机自启未启用")
+                Text(LoginItemManager.isEnabled
+                     ? "开机自启已启用"
+                     : (LoginItemManager.requiresApproval ? "开机自启需在系统设置中允许" : "开机自启未启用"))
                 Spacer()
-                if !LoginItemManager.isEnabled {
+                if LoginItemManager.requiresApproval {
+                    Button("打开设置") { LoginItemManager.openSystemSettings() }
+                } else if !LoginItemManager.isEnabled {
                     Button("启用") { model.repairLoginItem() }
                 }
             }
@@ -91,12 +102,7 @@ struct MenuBarView: View {
     }
 
     private static func dateFrom(_ hhmm: String) -> Date {
-        let (h, m) = DakaDate.timeComponents(hhmm) ?? (9, 0)
-        var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        c.hour = h
-        c.minute = m
-        c.second = 0
-        return Calendar.current.date(from: c) ?? Date()
+        DakaDate.date(on: Date(), at: hhmm) ?? Date()
     }
 
     private static func hhmm(from date: Date) -> String {

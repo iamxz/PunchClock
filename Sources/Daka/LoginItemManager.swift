@@ -2,19 +2,40 @@ import Foundation
 import ServiceManagement
 
 enum LoginItemManager {
-    /// 仅在作为 .app bundle 运行时注册；`swift run` 下跳过。
-    static func registerIfNeeded() {
-        guard Bundle.main.bundlePath.hasSuffix(".app") else { return }
-        if SMAppService.mainApp.status == .enabled { return }
+    static var launchAgentURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/LaunchAgents/com.xue.daka.plist")
+    }
+
+    /// 仅在作为 .app bundle 运行时注册；`swift run` 下跳过。返回错误信息（成功为 nil）。
+    @discardableResult
+    static func registerIfNeeded() -> String? {
+        guard Bundle.main.bundlePath.hasSuffix(".app") else { return nil }
+        if SMAppService.mainApp.status == .enabled { return nil }
         do {
             try SMAppService.mainApp.register()
+            return nil
         } catch {
-            try? writeLaunchAgentFallback()
+            do {
+                try writeLaunchAgentFallback()
+                return nil
+            } catch {
+                return "开机自启注册失败：\(error.localizedDescription)"
+            }
         }
     }
 
     static var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+        if SMAppService.mainApp.status == .enabled { return true }
+        return FileManager.default.fileExists(atPath: launchAgentURL.path)
+    }
+
+    static var requiresApproval: Bool {
+        SMAppService.mainApp.status == .requiresApproval
+    }
+
+    static func openSystemSettings() {
+        SMAppService.openSystemSettingsLoginItems()
     }
 
     private static func writeLaunchAgentFallback() throws {
@@ -31,10 +52,8 @@ enum LoginItemManager {
         </dict>
         </plist>
         """
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.xue.daka.plist")
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+        try FileManager.default.createDirectory(at: launchAgentURL.deletingLastPathComponent(),
                                                 withIntermediateDirectories: true)
-        try plist.write(to: url, atomically: true, encoding: .utf8)
+        try plist.write(to: launchAgentURL, atomically: true, encoding: .utf8)
     }
 }

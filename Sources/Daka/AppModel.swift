@@ -12,7 +12,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasPendingTasks = false
     @Published var errorMessage: String?
 
-    let store: PunchStore
+    private let store: PunchStore
     private let clock: AdjustableClock
     private var scheduler: Scheduler?
     private var reminder: ReminderController?
@@ -26,7 +26,9 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
-        LoginItemManager.registerIfNeeded()
+        if let registerError = LoginItemManager.registerIfNeeded() {
+            errorMessage = registerError
+        }
         if store.didRecoverFromCorruption {
             errorMessage = "打卡记录文件损坏，已备份并重置。" +
                 (store.corruptionBackupURL.map { "备份：\($0.lastPathComponent)" } ?? "")
@@ -54,6 +56,7 @@ final class AppModel: ObservableObject {
     }
 
     func punch(_ task: PunchTask) {
+        errorMessage = nil
         do {
             try store.mark(task, at: clock.now)
             refreshRecord()
@@ -64,6 +67,7 @@ final class AppModel: ObservableObject {
     }
 
     func setSkipped(_ skipped: Bool) {
+        errorMessage = nil
         do {
             try store.setSkipped(skipped, on: clock.now)
             refreshRecord()
@@ -78,6 +82,7 @@ final class AppModel: ObservableObject {
     func updateEvening(_ hhmm: String) { updateSettings { $0.eveningTime = hhmm } }
 
     private func updateSettings(_ mutate: (inout DakaCore.Settings) -> Void) {
+        errorMessage = nil
         var s = store.data.settings
         mutate(&s)
         do {
@@ -100,7 +105,9 @@ final class AppModel: ObservableObject {
     }
 
     func repairLoginItem() {
-        LoginItemManager.registerIfNeeded()
+        if let registerError = LoginItemManager.registerIfNeeded() {
+            errorMessage = registerError
+        }
         objectWillChange.send()
     }
 

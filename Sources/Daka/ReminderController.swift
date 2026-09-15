@@ -9,15 +9,22 @@ final class OverlayWindow: NSWindow {
 
     override func cancelOperation(_ sender: Any?) {}
 
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { return } // ESC
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command),
            let chars = event.charactersIgnoringModifiers?.lowercased(),
            ["q", "w", "m", "h"].contains(chars) {
-            return
+            return true
         }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { return } // ESC
         super.keyDown(with: event)
     }
+
+    override func performClose(_ sender: Any?) {}
+    override func performMiniaturize(_ sender: Any?) {}
 }
 
 @MainActor
@@ -46,12 +53,17 @@ final class ReminderController: ReminderPresenting {
 
     func refresh(now: Date) {
         overlayModel.now = now
+        rebuildWindowsIfNeeded()
     }
 
     func hide() {
         stopReassertTimer()
         currentTasks = []
         for w in windows { w.orderOut(nil) }
+    }
+
+    deinit {
+        reassertTimer?.invalidate()
     }
 
     private func rebuildWindowsIfNeeded() {
