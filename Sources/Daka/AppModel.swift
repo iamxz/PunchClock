@@ -15,6 +15,10 @@ final class AppModel: ObservableObject {
     @Published var scheduledLaunchWarning: String?
     @Published var scheduledLaunchInstalled = false
 
+    var hasSettingsFeedback: Bool {
+        errorMessage != nil || startupWarning != nil || scheduledLaunchWarning != nil
+    }
+
     @Published var selectedTool: ToolID = .punch
     let tools = ToolCatalog.all
 
