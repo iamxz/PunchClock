@@ -30,7 +30,8 @@ enum LoginItemManager {
         let status = SMAppService.mainApp.status
         if status == .requiresApproval { return false }
         if status == .enabled { return true }
-        return FileManager.default.fileExists(atPath: launchAgentURL.path)
+        guard let contents = try? String(contentsOf: launchAgentURL, encoding: .utf8) else { return false }
+        return contents.contains(Bundle.main.bundlePath)
     }
 
     static var requiresApproval: Bool {

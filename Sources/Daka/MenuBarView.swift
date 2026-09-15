@@ -9,9 +9,11 @@ struct MenuBarView: View {
             Text("今日打卡").font(.headline)
 
             statusRow(task: .morning, done: model.record.morningDone,
-                      at: model.record.morningDoneAt, due: model.settings.morningTime)
+                      at: model.record.morningDoneAt, due: model.settings.morningTime,
+                      inactive: scheduleInactive)
             statusRow(task: .evening, done: model.record.eveningDone,
-                      at: model.record.eveningDoneAt, due: model.settings.eveningTime)
+                      at: model.record.eveningDoneAt, due: model.settings.eveningTime,
+                      inactive: scheduleInactive)
 
             HStack {
                 Button("上班打卡") { model.punch(.morning) }
@@ -49,6 +51,10 @@ struct MenuBarView: View {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
 
+            if let warning = model.startupWarning {
+                Text(warning).font(.caption).foregroundStyle(.orange)
+            }
+
             Divider()
 
             HStack {
@@ -77,7 +83,13 @@ struct MenuBarView: View {
         .frame(width: 320)
     }
 
-    private func statusRow(task: PunchTask, done: Bool, at: Date?, due: String) -> some View {
+    private var scheduleInactive: Bool {
+        !model.settings.enabled
+            || model.record.skipped
+            || !model.settings.workdays.contains(DakaDate.weekday(of: Date()))
+    }
+
+    private func statusRow(task: PunchTask, done: Bool, at: Date?, due: String, inactive: Bool) -> some View {
         HStack {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(done ? Color.green : Color.secondary)
@@ -85,6 +97,8 @@ struct MenuBarView: View {
             Spacer()
             if done, let at {
                 Text(Self.timeFormatter.string(from: at)).foregroundStyle(.secondary)
+            } else if inactive {
+                Text("今日不提醒").foregroundStyle(.secondary)
             } else {
                 Text("待打卡 · \(due)").foregroundStyle(.orange)
             }

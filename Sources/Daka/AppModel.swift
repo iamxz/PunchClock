@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var settings: DakaCore.Settings
     @Published private(set) var hasPendingTasks = false
     @Published var errorMessage: String?
+    @Published var startupWarning: String?
 
     private let store: PunchStore
     private let clock: AdjustableClock
@@ -26,12 +27,16 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        var warnings: [String] = []
         if let registerError = LoginItemManager.registerIfNeeded() {
-            errorMessage = registerError
+            warnings.append(registerError)
         }
         if store.didRecoverFromCorruption {
-            errorMessage = "打卡记录文件损坏，已备份并重置。" +
-                (store.corruptionBackupURL.map { "备份：\($0.lastPathComponent)" } ?? "")
+            warnings.append("打卡记录文件损坏，已备份并重置。" +
+                (store.corruptionBackupURL.map { "备份：\($0.lastPathComponent)" } ?? ""))
+        }
+        if !warnings.isEmpty {
+            startupWarning = warnings.joined(separator: "\n")
         }
 
         let reminder = ReminderController(interval: settings.reminderIntervalSeconds) { [weak self] task in

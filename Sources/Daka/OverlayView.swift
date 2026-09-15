@@ -4,8 +4,8 @@ import DakaCore
 @MainActor
 final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []
-    @Published var now: Date = Date()
     @Published var settings: DakaCore.Settings = .default
+    @Published var now: Date = Date()
     var onPunch: (PunchTask) -> Void = { _ in }
 }
 
@@ -26,15 +26,23 @@ struct OverlayView: View {
                     .font(.system(size: 22))
                     .foregroundStyle(.gray)
                 ForEach(model.tasks, id: \.self) { task in
-                    Button {
-                        model.onPunch(task)
-                    } label: {
-                        Text(task.title)
-                            .font(.system(size: 26, weight: .semibold))
-                            .frame(width: 260, height: 64)
+                    VStack(spacing: 8) {
+                        Button {
+                            model.onPunch(task)
+                        } label: {
+                            Text(task.title)
+                                .font(.system(size: 26, weight: .semibold))
+                                .frame(width: 260, height: 64)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(task == .morning ? .green : .blue)
+
+                        if let overdue = overdueText(for: task) {
+                            Text(overdue)
+                                .font(.system(size: 18))
+                                .foregroundStyle(.orange)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(task == .morning ? .green : .blue)
                 }
             }
         }
@@ -48,6 +56,18 @@ struct OverlayView: View {
         case []: return "打卡完成"
         default: return "还有打卡未完成"
         }
+    }
+
+    private func overdueText(for task: PunchTask) -> String? {
+        let hhmm = task == .morning ? model.settings.morningTime : model.settings.eveningTime
+        guard let due = DakaDate.date(on: model.now, at: hhmm), model.now > due else { return nil }
+        let seconds = Int(model.now.timeIntervalSince(due))
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return "已欠 \(hours) 小时 \(minutes) 分"
+        }
+        return "已欠 \(minutes) 分"
     }
 
     private static let timeFormatter: DateFormatter = {
