@@ -11,11 +11,25 @@ struct ToolPanelView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 summaryRow("打卡", punchSummary, "checkmark.seal")
-                summaryRow("喝水", "即将推出", "drop")
-                summaryRow("护眼", "即将推出", "eye")
-                summaryRow("久坐", "即将推出", "figure.walk")
+                summaryRow("喝水", "\(model.healthStatus.cups)/\(model.healthSettings.waterGoalCups) 杯", "drop")
+                summaryRow("走动", "已起身 \(model.healthStatus.stands) 次", "figure.walk")
             }
             .font(.caption)
+
+            HStack {
+                Button {
+                    model.drinkWater()
+                } label: {
+                    Label("喝水", systemImage: "drop.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                Button {
+                    model.standUp()
+                } label: {
+                    Label("走动", systemImage: "figure.walk")
+                        .frame(maxWidth: .infinity)
+                }
+            }
 
             Divider()
 
