@@ -41,9 +41,10 @@ final class ReminderController: ReminderPresenting {
         self.overlayModel.onPunch = onPunch
     }
 
-    func show(tasks: [PunchTask], now: Date) {
+    func show(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
         currentTasks = tasks
         overlayModel.tasks = tasks
+        overlayModel.settings = settings
         overlayModel.now = now
         rebuildWindowsIfNeeded()
         for w in windows { w.makeKeyAndOrderFront(nil) }
@@ -51,7 +52,8 @@ final class ReminderController: ReminderPresenting {
         startReassertTimer()
     }
 
-    func refresh(now: Date) {
+    func refresh(settings: DakaCore.Settings, now: Date) {
+        overlayModel.settings = settings
         overlayModel.now = now
         rebuildWindowsIfNeeded()
     }

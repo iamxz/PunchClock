@@ -81,8 +81,14 @@ public final class PunchStore {
     }
 
     private static func load(from url: URL) -> LoadResult {
-        guard let raw = try? Data(contentsOf: url) else {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else {
             return LoadResult(data: DakaData(), recovered: false, backupURL: nil)
+        }
+        guard let raw = try? Data(contentsOf: url) else {
+            let backup = makeBackupURL(for: url)
+            let moved = (try? fileManager.moveItem(at: url, to: backup)) != nil
+            return LoadResult(data: DakaData(), recovered: true, backupURL: moved ? backup : nil)
         }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -90,12 +96,16 @@ public final class PunchStore {
             return LoadResult(data: try decoder.decode(DakaData.self, from: raw),
                               recovered: false, backupURL: nil)
         } catch {
-            let stamp = Int(Date().timeIntervalSince1970 * 1000)
-            let suffix = UUID().uuidString.prefix(8)
-            let backup = url.deletingLastPathComponent()
-                .appendingPathComponent("data.json.corrupt-\(stamp)-\(suffix)")
-            let moved = (try? FileManager.default.moveItem(at: url, to: backup)) != nil
+            let backup = makeBackupURL(for: url)
+            let moved = (try? fileManager.moveItem(at: url, to: backup)) != nil
             return LoadResult(data: DakaData(), recovered: true, backupURL: moved ? backup : nil)
         }
+    }
+
+    private static func makeBackupURL(for url: URL) -> URL {
+        let stamp = Int(Date().timeIntervalSince1970 * 1000)
+        let suffix = UUID().uuidString.prefix(8)
+        return url.deletingLastPathComponent()
+            .appendingPathComponent("data.json.corrupt-\(stamp)-\(suffix)")
     }
 }

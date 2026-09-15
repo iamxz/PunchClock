@@ -6,8 +6,8 @@ final class SpyPresenter: ReminderPresenting {
     var hideCount = 0
     var refreshCount = 0
 
-    func show(tasks: [PunchTask], now: Date) { lastShown = tasks }
-    func refresh(now: Date) { refreshCount += 1 }
+    func show(tasks: [PunchTask], settings: Settings, now: Date) { lastShown = tasks }
+    func refresh(settings: Settings, now: Date) { refreshCount += 1 }
     func hide() { lastShown = nil; hideCount += 1 }
 }
 
@@ -109,6 +109,18 @@ final class SchedulerTests: XCTestCase {
         scheduler.tick()
         scheduler.tick()
         XCTAssertEqual(presenter.refreshCount, 0)
+    }
+
+    func testLaunchForceDoesNotLeakToNextDay() {
+        let (scheduler, clock, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 7, 0),
+                                                             launchForced: true)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastShown, [.morning])
+
+        // Simulate sleeping across the day boundary without any tick.
+        clock.now = TestTime.date(2026, 9, 15, 7, 0)
+        scheduler.tick()
+        XCTAssertNil(presenter.lastShown)
     }
 
     func testStateChangeFiresOnDayRollover() {

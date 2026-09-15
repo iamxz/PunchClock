@@ -5,6 +5,7 @@ import DakaCore
 final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []
     @Published var now: Date = Date()
+    @Published var settings: DakaCore.Settings = .default
     var onPunch: (PunchTask) -> Void = { _ in }
 }
 

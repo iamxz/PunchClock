@@ -2,8 +2,8 @@ import Foundation
 
 /// UI 侧实现：展示/刷新/隐藏全屏遮罩。
 public protocol ReminderPresenting: AnyObject {
-    func show(tasks: [PunchTask], now: Date)
-    func refresh(now: Date)
+    func show(tasks: [PunchTask], settings: Settings, now: Date)
+    func refresh(settings: Settings, now: Date)
     func hide()
 }
 
@@ -17,6 +17,7 @@ public final class Scheduler {
     private let interval: TimeInterval
     private let calendarOverride: Calendar?
     private var calendar: Calendar { calendarOverride ?? .current }
+    private let launchDayKey: String
 
     private var launchForcedPending: Bool
     private var timer: Timer?
@@ -39,6 +40,7 @@ public final class Scheduler {
         self.launchForcedPending = launchForced
         self.interval = interval
         self.calendarOverride = calendar
+        self.launchDayKey = DakaDate.key(for: clock.now, calendar: calendar ?? .current)
     }
 
     deinit {
@@ -69,16 +71,17 @@ public final class Scheduler {
 
         let settings = store.data.settings
         let record = store.record(for: now, calendar: calendar)
+        let forceMorning = launchForcedPending && dayKey == launchDayKey
         let tasks = evaluator.pendingTasks(now: now, settings: settings, record: record,
-                                           calendar: calendar, launchForced: launchForcedPending)
-        consumeLaunchForceIfNeeded(now: now, settings: settings, record: record)
-        apply(tasks: tasks, now: now, dayChanged: dayChanged)
+                                           calendar: calendar, launchForced: forceMorning)
+        consumeLaunchForceIfNeeded(now: now, settings: settings, record: record, dayKey: dayKey)
+        apply(tasks: tasks, settings: settings, now: now, dayChanged: dayChanged)
     }
 
-    /// 开机强制项一旦「被常规日程接管」或已完成，就不再强制。
-    private func consumeLaunchForceIfNeeded(now: Date, settings: Settings, record: DayRecord) {
+    /// 开机强制项仅在启动当天有效；当天上班已打卡或已到上班时间后不再强制。
+    private func consumeLaunchForceIfNeeded(now: Date, settings: Settings, record: DayRecord, dayKey: String) {
         guard launchForcedPending else { return }
-        if record.morningDone {
+        if dayKey != launchDayKey || record.morningDone {
             launchForcedPending = false
             return
         }
@@ -87,7 +90,7 @@ public final class Scheduler {
         }
     }
 
-    private func apply(tasks: [PunchTask], now: Date, dayChanged: Bool) {
+    private func apply(tasks: [PunchTask], settings: Settings, now: Date, dayChanged: Bool) {
         hasPendingTasks = !tasks.isEmpty
         let changed = tasks != lastTasks
         if changed {
@@ -95,10 +98,10 @@ public final class Scheduler {
             if tasks.isEmpty {
                 presenter?.hide()
             } else {
-                presenter?.show(tasks: tasks, now: now)
+                presenter?.show(tasks: tasks, settings: settings, now: now)
             }
         } else if !tasks.isEmpty {
-            presenter?.refresh(now: now)
+            presenter?.refresh(settings: settings, now: now)
         }
         if changed || dayChanged {
             onStateChange?(tasks)
