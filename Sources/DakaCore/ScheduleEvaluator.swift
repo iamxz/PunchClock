@@ -6,41 +6,30 @@ public struct ScheduleEvaluator {
     public func pendingReminders(now: Date,
                                  settings: Settings,
                                  record: DayRecord,
-                                 calendar: Calendar = .current) -> [PendingReminder] {
+                                 calendar: Calendar = .current) -> [PunchTask] {
         guard settings.enabled, !record.skipped else { return [] }
         guard settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar)) else { return [] }
 
-        var reminders: [PendingReminder] = []
+        var tasks: [PunchTask] = []
 
-        if let level = level(now: now,
-                             start: settings.morningWindowStart,
-                             deadline: settings.morningDeadline,
-                             done: record.morningDone,
-                             calendar: calendar) {
-            reminders.append(PendingReminder(task: .morning, level: level))
+        if pending(start: settings.morningWindowStart,
+                   done: record.morningDone,
+                   now: now,
+                   calendar: calendar) {
+            tasks.append(.morning)
         }
-        if let level = level(now: now,
-                             start: settings.eveningWindowStart,
-                             deadline: settings.eveningDeadline,
-                             done: PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration),
-                             calendar: calendar) {
-            reminders.append(PendingReminder(task: .evening, level: level))
+        if pending(start: settings.eveningWindowStart,
+                   done: PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration),
+                   now: now,
+                   calendar: calendar) {
+            tasks.append(.evening)
         }
-        return reminders
+        return tasks
     }
 
-    private func level(now: Date,
-                       start: String,
-                       deadline: String,
-                       done: Bool,
-                       calendar: Calendar) -> ReminderLevel? {
-        guard !done else { return nil }
-        if let deadlineDate = DakaDate.date(on: now, at: deadline, calendar: calendar), now >= deadlineDate {
-            return .hard
-        }
-        if let startDate = DakaDate.date(on: now, at: start, calendar: calendar), now >= startDate {
-            return .gentle
-        }
-        return nil
+    private func pending(start: String, done: Bool, now: Date, calendar: Calendar) -> Bool {
+        guard !done else { return false }
+        guard let startDate = DakaDate.date(on: now, at: start, calendar: calendar) else { return false }
+        return now >= startDate
     }
 }

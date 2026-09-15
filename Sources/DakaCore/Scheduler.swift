@@ -2,7 +2,6 @@ import Foundation
 
 public protocol ReminderPresenting: AnyObject {
     func showHard(tasks: [PunchTask], settings: Settings, now: Date)
-    func showGentle(tasks: [PunchTask], settings: Settings, now: Date)
     func refresh(settings: Settings, now: Date)
     func hide()
 }
@@ -65,17 +64,9 @@ public final class Scheduler {
 
         let settings = store.data.settings
         let record = store.record(for: now, calendar: calendar)
-        let reminders = evaluator.pendingReminders(now: now, settings: settings, record: record,
-                                                   calendar: calendar)
-
-        var newState = ReminderState()
-        for reminder in reminders {
-            switch reminder.level {
-            case .hard: newState.hard.append(reminder.task)
-            case .gentle: newState.gentle.append(reminder.task)
-            }
-        }
-        apply(state: newState, settings: settings, now: now, dayChanged: dayChanged)
+        let pending = evaluator.pendingReminders(now: now, settings: settings, record: record,
+                                                 calendar: calendar)
+        apply(state: ReminderState(pending: pending), settings: settings, now: now, dayChanged: dayChanged)
     }
 
     private func apply(state newState: ReminderState, settings: Settings, now: Date, dayChanged: Bool) {
@@ -83,10 +74,8 @@ public final class Scheduler {
         let changed = newState != lastState
         if changed {
             lastState = newState
-            if !newState.hard.isEmpty {
-                presenter?.showHard(tasks: newState.hard, settings: settings, now: now)
-            } else if !newState.gentle.isEmpty {
-                presenter?.showGentle(tasks: newState.gentle, settings: settings, now: now)
+            if !newState.pending.isEmpty {
+                presenter?.showHard(tasks: newState.pending, settings: settings, now: now)
             } else {
                 presenter?.hide()
             }

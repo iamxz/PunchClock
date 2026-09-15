@@ -12,31 +12,16 @@ public enum PunchTask: String, Codable, CaseIterable, Hashable, Sendable {
     }
 }
 
-public enum ReminderLevel: String, Codable, Equatable, Sendable {
-    case gentle
-    case hard
-}
-
-public struct PendingReminder: Equatable, Sendable {
-    public let task: PunchTask
-    public let level: ReminderLevel
-
-    public init(task: PunchTask, level: ReminderLevel) {
-        self.task = task
-        self.level = level
-    }
-}
-
 public struct ReminderState: Equatable, Sendable {
-    public var gentle: [PunchTask]
-    public var hard: [PunchTask]
+    public var pending: [PunchTask]
 
-    public init(gentle: [PunchTask] = [], hard: [PunchTask] = []) {
-        self.gentle = gentle
-        self.hard = hard
+    public init(pending: [PunchTask] = []) {
+        self.pending = pending
     }
 
-    public var isEmpty: Bool { gentle.isEmpty && hard.isEmpty }
+    public var isEmpty: Bool { pending.isEmpty }
+
+    public func contains(_ task: PunchTask) -> Bool { pending.contains(task) }
 }
 
 public struct Settings: Codable, Equatable, Sendable {

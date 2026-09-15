@@ -6,8 +6,7 @@ public enum PetMood: String, CaseIterable, Sendable {
     case focused        // 下午
     case relaxed        // 傍晚
     case sleepy         // 夜间/深夜
-    case gentlePending  // 打卡窗口内未完成
-    case hardPending    // 已过截止未完成
+    case punchPending   // 打卡窗口内未完成
     case thirsty        // 该喝水了
     case restless       // 该起身走动了
 
@@ -18,20 +17,18 @@ public enum PetMood: String, CaseIterable, Sendable {
         case .focused: return "💪"
         case .relaxed: return "😌"
         case .sleepy: return "😴"
-        case .gentlePending: return "🤔"
-        case .hardPending: return "😰"
+        case .punchPending: return "😰"
         case .thirsty: return "🥵"
         case .restless: return "😤"
         }
     }
 
-    /// 状态覆盖时间：打卡 hard > 打卡 gentle > 健康（喝水 > 走动）> 时间。
+    /// 状态覆盖时间：打卡待办 > 健康（喝水 > 走动）> 时间。
     public static func resolve(reminderState: ReminderState,
                                now: Date,
                                health: HealthStatus? = nil,
                                calendar: Calendar = .current) -> PetMood {
-        if !reminderState.hard.isEmpty { return .hardPending }
-        if !reminderState.gentle.isEmpty { return .gentlePending }
+        if !reminderState.isEmpty { return .punchPending }
         if let health {
             if health.waterDue { return .thirsty }
             if health.movementDue { return .restless }

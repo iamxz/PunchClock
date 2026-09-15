@@ -7,7 +7,7 @@ final class ScheduleEvaluatorTests: XCTestCase {
 
     private func reminders(_ date: Date,
                            settings: Settings = .default,
-                           record: DayRecord = DayRecord()) -> [PendingReminder] {
+                           record: DayRecord = DayRecord()) -> [PunchTask] {
         evaluator.pendingReminders(now: date, settings: settings, record: record, calendar: cal)
     }
 
@@ -15,47 +15,29 @@ final class ScheduleEvaluatorTests: XCTestCase {
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 8, 59)), [])
     }
 
-    func testAtMorningWindowStartIsGentle() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 0)),
-                       [PendingReminder(task: .morning, level: .gentle)])
+    func testAtMorningWindowStartIsPending() {
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 0)), [.morning])
     }
 
-    func testWithinMorningWindowIsGentle() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 29)),
-                       [PendingReminder(task: .morning, level: .gentle)])
+    func testWithinMorningWindowIsPending() {
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 29)), [.morning])
     }
 
-    func testAtMorningDeadlineIsHard() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 30)),
-                       [PendingReminder(task: .morning, level: .hard)])
+    func testAfterMorningDeadlineStillPending() {
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 31)), [.morning])
     }
 
-    func testAfterMorningDeadlineIsHard() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 31)),
-                       [PendingReminder(task: .morning, level: .hard)])
+    func testBeforeEveningWindowMorningOnly() {
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 17, 59)), [.morning])
     }
 
-    func testBeforeEveningWindowMorningHardEveningSilent() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 17, 59)),
-                       [PendingReminder(task: .morning, level: .hard)])
+    func testAtEveningWindowStartBothPending() {
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 0)), [.morning, .evening])
     }
 
-    func testAtEveningWindowStartMorningHardEveningGentle() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 0)),
-                       [PendingReminder(task: .morning, level: .hard),
-                        PendingReminder(task: .evening, level: .gentle)])
-    }
-
-    func testAtEveningDeadlineBothHard() {
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 30)),
-                       [PendingReminder(task: .morning, level: .hard),
-                        PendingReminder(task: .evening, level: .hard)])
-    }
-
-    func testMorningDoneOnlyEveningGentle() {
+    func testMorningDoneOnlyEveningPending() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 10), record: record),
-                       [PendingReminder(task: .evening, level: .gentle)])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 10), record: record), [.evening])
     }
 
     func testBothDoneNoReminders() {
@@ -70,8 +52,7 @@ final class ScheduleEvaluatorTests: XCTestCase {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
                                eveningPunches: [TestTime.date(2026, 9, 14, 16, 0)])
         let now = TestTime.date(2026, 9, 14, 18, 30)
-        XCTAssertEqual(reminders(now, settings: settings, record: record),
-                       [PendingReminder(task: .evening, level: .hard)])
+        XCTAssertEqual(reminders(now, settings: settings, record: record), [.evening])
     }
 
     func testEveningAboveMinimumClears() {
@@ -102,14 +83,12 @@ final class ScheduleEvaluatorTests: XCTestCase {
         var settings = Settings.default
         settings.morningWindowStart = "oops"
         settings.morningDeadline = "oops"
-        // 10:00: morning unparseable -> none; evening window not reached yet -> none
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings), [])
     }
 
-    func testInvalidStartWithValidDeadlineStillHardAfterDeadline() {
+    func testInvalidStartYieldsNoReminder() {
         var settings = Settings.default
         settings.morningWindowStart = "oops"
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings),
-                       [PendingReminder(task: .morning, level: .hard)])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings), [])
     }
 }

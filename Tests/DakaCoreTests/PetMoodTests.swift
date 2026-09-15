@@ -17,16 +17,10 @@ final class PetMoodTests: XCTestCase {
         XCTAssertEqual(resolve(2, calendar: cal), .sleepy)
     }
 
-    func testGentleOverridesTime() {
-        let state = ReminderState(gentle: [.morning], hard: [])
+    func testPunchPendingOverridesTime() {
+        let state = ReminderState(pending: [.morning])
         let mood = PetMood.resolve(reminderState: state, now: TestTime.date(2026, 9, 14, 9, 0), calendar: cal)
-        XCTAssertEqual(mood, .gentlePending)
-    }
-
-    func testHardOverridesGentleAndTime() {
-        let state = ReminderState(gentle: [.evening], hard: [.morning])
-        let mood = PetMood.resolve(reminderState: state, now: TestTime.date(2026, 9, 14, 9, 0), calendar: cal)
-        XCTAssertEqual(mood, .hardPending)
+        XCTAssertEqual(mood, .punchPending)
     }
 
     func testEveryMoodHasEmoji() {
@@ -59,10 +53,10 @@ final class PetMoodTests: XCTestCase {
         let status = HealthStatus(cups: 0, stands: 0,
                                   minutesSinceDrink: 90, minutesSinceStand: 90,
                                   waterDue: true, movementDue: true, active: true)
-        let mood = PetMood.resolve(reminderState: ReminderState(gentle: [.morning]),
+        let mood = PetMood.resolve(reminderState: ReminderState(pending: [.morning]),
                                    now: TestTime.date(2026, 9, 14, 10, 0),
                                    health: status, calendar: cal)
-        XCTAssertEqual(mood, .gentlePending)
+        XCTAssertEqual(mood, .punchPending)
     }
 
     func testIdleHealthStatusKeepsTimeMood() {

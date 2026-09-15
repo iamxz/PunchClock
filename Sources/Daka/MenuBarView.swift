@@ -57,10 +57,12 @@ struct MenuBarView: View {
                     .foregroundStyle(.secondary)
             } else if scheduleInactive {
                 Text("今日不提醒").foregroundStyle(.secondary)
-            } else if model.reminderState.hard.contains(task) {
-                Text("已过截止 \(deadline)\(suffix)").foregroundStyle(.red)
-            } else if model.reminderState.gentle.contains(task) {
-                Text("窗口内 \(start)–\(deadline)\(suffix)").foregroundStyle(.orange)
+            } else if model.reminderState.contains(task) {
+                if let due = DakaDate.date(on: model.now, at: deadline), model.now >= due {
+                    Text("已过截止 \(deadline)\(suffix)").foregroundStyle(.red)
+                } else {
+                    Text("窗口内 \(start)–\(deadline)\(suffix)").foregroundStyle(.orange)
+                }
             } else {
                 Text("待打卡 \(start)–\(deadline)\(suffix)").foregroundStyle(.secondary)
             }

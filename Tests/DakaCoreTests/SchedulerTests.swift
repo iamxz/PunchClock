@@ -3,14 +3,12 @@ import XCTest
 
 final class SpyPresenter: ReminderPresenting {
     var lastHard: [PunchTask]?
-    var lastGentle: [PunchTask]?
     var hideCount = 0
     var refreshCount = 0
 
-    func showHard(tasks: [PunchTask], settings: Settings, now: Date) { lastHard = tasks; lastGentle = nil }
-    func showGentle(tasks: [PunchTask], settings: Settings, now: Date) { lastGentle = tasks; lastHard = nil }
+    func showHard(tasks: [PunchTask], settings: Settings, now: Date) { lastHard = tasks }
     func refresh(settings: Settings, now: Date) { refreshCount += 1 }
-    func hide() { lastHard = nil; lastGentle = nil; hideCount += 1 }
+    func hide() { lastHard = nil; hideCount += 1 }
 }
 
 final class SchedulerTests: XCTestCase {
@@ -40,44 +38,27 @@ final class SchedulerTests: XCTestCase {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
         scheduler.tick()
         XCTAssertNil(presenter.lastHard)
-        XCTAssertNil(presenter.lastGentle)
         XCTAssertEqual(presenter.hideCount, 1)
     }
 
-    func testWindowStartShowsGentle() {
+    func testWindowStartShowsHard() {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
         scheduler.tick()
-        XCTAssertEqual(presenter.lastGentle, [.morning])
-        XCTAssertNil(presenter.lastHard)
+        XCTAssertEqual(presenter.lastHard, [.morning])
     }
 
-    func testDeadlineShowsHard() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 30))
+    func testStaysHardAcrossTicks() {
+        let (scheduler, clock, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
         scheduler.tick()
         XCTAssertEqual(presenter.lastHard, [.morning])
-        XCTAssertNil(presenter.lastGentle)
-    }
-
-    func testGentleToHardTransitionOnTicks() {
-        let (scheduler, clock, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 29))
-        scheduler.tick()
-        XCTAssertEqual(presenter.lastGentle, [.morning])
 
         clock.now = TestTime.date(2026, 9, 14, 9, 30)
         scheduler.tick()
         XCTAssertEqual(presenter.lastHard, [.morning])
-        XCTAssertNil(presenter.lastGentle)
-    }
-
-    func testHardTakesPriorityOverGentle() {
-        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
-        scheduler.tick()
-        XCTAssertEqual(presenter.lastHard, [.morning])
-        XCTAssertNil(presenter.lastGentle)
     }
 
     func testHidesAfterPunch() throws {
-        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 35))
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 5))
         scheduler.tick()
         XCTAssertEqual(presenter.lastHard, [.morning])
 
@@ -99,8 +80,8 @@ final class SchedulerTests: XCTestCase {
         var observed: [ReminderState] = []
         scheduler.onStateChange = { observed.append($0) }
         scheduler.tick()
-        XCTAssertEqual(observed, [ReminderState(gentle: [.morning], hard: [])])
-        XCTAssertEqual(scheduler.state, ReminderState(gentle: [.morning], hard: []))
+        XCTAssertEqual(observed, [ReminderState(pending: [.morning])])
+        XCTAssertEqual(scheduler.state, ReminderState(pending: [.morning]))
     }
 
     func testDayRolloverFiresCallback() {
@@ -117,18 +98,15 @@ final class SchedulerTests: XCTestCase {
         let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 19, 10, 0))
         scheduler.tick()
         XCTAssertNil(presenter.lastHard)
-        XCTAssertNil(presenter.lastGentle)
     }
 
-    func testHardToGentleAfterMorningPunched() throws {
+    func testMorningPunchedSwitchesToEvening() throws {
         let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
         scheduler.tick()
-        XCTAssertEqual(presenter.lastHard, [.morning])
-        XCTAssertNil(presenter.lastGentle)
+        XCTAssertEqual(presenter.lastHard, [.morning, .evening])
 
         try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
         scheduler.tick()
-        XCTAssertEqual(presenter.lastGentle, [.evening])
-        XCTAssertNil(presenter.lastHard)
+        XCTAssertEqual(presenter.lastHard, [.evening])
     }
 }

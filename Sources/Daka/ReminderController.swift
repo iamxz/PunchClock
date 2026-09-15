@@ -35,33 +35,13 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     private var builtFrames: [CGRect] = []
     private var reassertTimer: Timer?
     private var currentTasks: [PunchTask] = []
-    private var currentLevel: ReminderLevel?
-    private var gentleTasks: [PunchTask] = []
-    private let notifier = GentleNotifier()
-    private var lastNotifyAt: Date?
 
     init(interval: TimeInterval, onPunch: @escaping (PunchTask) -> Void) {
         self.reassertInterval = interval
         self.overlayModel.onPunch = onPunch
-        notifier.requestAuthorizationIfNeeded()
-    }
-
-    func showGentle(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
-        currentLevel = .gentle
-        gentleTasks = tasks
-        currentTasks = []
-        overlayModel.tasks = tasks
-        overlayModel.settings = settings
-        overlayModel.now = now
-        stopReassertTimer()
-        for w in windows { w.orderOut(nil) }
-        notifier.notify(tasks: tasks)
-        lastNotifyAt = now
     }
 
     func showHard(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
-        currentLevel = .hard
-        gentleTasks = []
         currentTasks = tasks
         overlayModel.tasks = tasks
         overlayModel.settings = settings
@@ -69,28 +49,19 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         rebuildWindowsIfNeeded()
         for w in windows { w.makeKeyAndOrderFront(nil) }
         NSApp.activate(ignoringOtherApps: true)
+        stopReassertTimer()
         startReassertTimer()
     }
 
     func refresh(settings: DakaCore.Settings, now: Date) {
         overlayModel.settings = settings
         overlayModel.now = now
-        if currentLevel == .hard {
-            rebuildWindowsIfNeeded()
-        } else if currentLevel == .gentle {
-            if let last = lastNotifyAt, now.timeIntervalSince(last) >= settings.effectiveReminderIntervalSeconds {
-                notifier.notify(tasks: gentleTasks)
-                lastNotifyAt = now
-            }
-        }
+        rebuildWindowsIfNeeded()
     }
 
     func hide() {
         stopReassertTimer()
-        currentLevel = nil
-        gentleTasks = []
         currentTasks = []
-        lastNotifyAt = nil
         for w in windows { w.orderOut(nil) }
     }
 
