@@ -13,7 +13,7 @@
 ## 2. 菜单栏面板（`MenuBarView.swift`）
 
 - 标题行改为：`HStack { Text("今日打卡").font(.headline); Spacer(); 控制中心图标按钮 }`。
-- 控制中心按钮：`Image(systemName: "switch.2")`，action `model.openControlCenter()`，`.buttonStyle(.plain)`，`.help("打开控制中心")`。
+- 控制中心按钮：`Image(systemName: "switch.2")`，`.imageScale(.large)` + `.padding(4)` + `.contentShape(Rectangle())`，action `model.openControlCenter()`，`.buttonStyle(.borderless)`，`.help("打开控制中心")`，`.accessibilityLabel("控制中心")`（图标较小，用 borderless 提供悬停反馈并扩大点击区域）。
 - 删除底部的 `Divider()`、文字「控制中心」按钮、以及「显示桌宠 / 隐藏桌宠」按钮。
 - 面板剩余内容：标题行（左标题 + 右控制中心图标）、两个状态行、打卡按钮。
 
