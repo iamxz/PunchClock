@@ -42,9 +42,11 @@ public enum HealthRules {
         let windowEnd = DakaDate.date(on: now, at: schedule.eveningDeadline, calendar: calendar)
 
         let inWindow: Bool
-        switch (windowStart, windowEnd) {
-        case let (start?, end?): inWindow = now >= start && now <= end
-        default: inWindow = true
+        if let start = windowStart, let end = windowEnd {
+            // 单日窗口假设（与打卡一致）：start <= end。
+            inWindow = now >= start && now <= end
+        } else {
+            inWindow = false
         }
 
         let active = schedule.enabled

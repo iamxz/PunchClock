@@ -81,4 +81,16 @@ final class HealthRulesTests: XCTestCase {
         health.waterIntervalMinutes = 1
         XCTAssertEqual(health.effectiveWaterIntervalMinutes, 15)
     }
+
+    func testInvalidTimesInactive() {
+        var s = schedule
+        s.morningWindowStart = "oops"
+        s.eveningDeadline = "oops"
+        let result = HealthRules.status(health: .default, schedule: s,
+                                        record: DayHealthRecord(), skipped: false,
+                                        now: TestTime.date(2026, 9, 14, 10, 30), calendar: cal)
+        XCTAssertFalse(result.active)
+        XCTAssertFalse(result.waterDue)
+        XCTAssertFalse(result.movementDue)
+    }
 }
