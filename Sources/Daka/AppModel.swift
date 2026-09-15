@@ -15,6 +15,8 @@ final class AppModel: ObservableObject {
     @Published var scheduledLaunchWarning: String?
     @Published var scheduledLaunchInstalled = false
 
+    weak var mainWindow: MainWindowController?
+
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
     var now: Date { clock.now }
@@ -157,6 +159,21 @@ final class AppModel: ObservableObject {
     func repairLoginItem() {
         errorMessage = LoginItemManager.registerIfNeeded()
         objectWillChange.send()
+    }
+
+    func openMainWindow() {
+        mainWindow?.show()
+    }
+
+    func statistics(rangeDays: Int) -> StatisticsSummary {
+        Statistics.compute(records: store.data.records,
+                           settings: store.data.settings,
+                           now: clock.now,
+                           rangeDays: rangeDays)
+    }
+
+    func setWorkdays(_ days: Set<Int>) {
+        updateSettings { $0.workdays = days }
     }
 
     func quit() {
