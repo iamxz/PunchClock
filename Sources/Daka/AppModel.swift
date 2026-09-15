@@ -262,6 +262,7 @@ final class AppModel: ObservableObject {
             try store.mark(task, at: time)
             refreshRecord()
             scheduler?.tick()
+            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -273,6 +274,7 @@ final class AppModel: ObservableObject {
             try store.updatePunch(task, at: index, to: time, on: clock.now)
             refreshRecord()
             scheduler?.tick()
+            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -284,6 +286,7 @@ final class AppModel: ObservableObject {
             try store.removePunch(task, at: index, on: clock.now)
             refreshRecord()
             scheduler?.tick()
+            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }

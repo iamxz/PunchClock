@@ -119,6 +119,7 @@ Sources/
     PunchStore.swift      持久化（原子写、损坏恢复）
     DakaClock.swift       可注入时钟
     Statistics.swift      统计口径
+    PunchFeedback.swift   打卡未完成原因文案
     DakaDate.swift / PunchRules.swift / PunchTarget.swift / PetMood.swift / ToolCatalog.swift 日期、打卡规则与工具目录
     HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
     LaunchAgentPlist.swift 定点拉起 plist 生成
