@@ -15,6 +15,7 @@ public final class Scheduler {
     private let store: PunchStore
     private weak var presenter: ReminderPresenting?
     private let interval: TimeInterval
+    private let calendar: Calendar
 
     private var launchForcedPending: Bool
     private var timer: Timer?
@@ -27,13 +28,15 @@ public final class Scheduler {
                 store: PunchStore,
                 presenter: ReminderPresenting,
                 launchForced: Bool = false,
-                interval: TimeInterval = 1) {
+                interval: TimeInterval = 1,
+                calendar: Calendar = .current) {
         self.clock = clock
         self.evaluator = evaluator
         self.store = store
         self.presenter = presenter
         self.launchForcedPending = launchForced
         self.interval = interval
+        self.calendar = calendar
     }
 
     public func start() {
@@ -55,9 +58,9 @@ public final class Scheduler {
     public func tick() {
         let now = clock.now
         let settings = store.data.settings
-        let record = store.record(for: now)
+        let record = store.record(for: now, calendar: calendar)
         let tasks = evaluator.pendingTasks(now: now, settings: settings, record: record,
-                                           launchForced: launchForcedPending)
+                                           calendar: calendar, launchForced: launchForcedPending)
         consumeLaunchForceIfNeeded(now: now, settings: settings, record: record)
         apply(tasks: tasks, now: now)
     }
@@ -69,7 +72,7 @@ public final class Scheduler {
             launchForcedPending = false
             return
         }
-        if let due = DakaDate.date(on: now, at: settings.morningTime), now >= due {
+        if let due = DakaDate.date(on: now, at: settings.morningTime, calendar: calendar), now >= due {
             launchForcedPending = false
         }
     }

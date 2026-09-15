@@ -31,7 +31,8 @@ final class SchedulerTests: XCTestCase {
         let store = PunchStore(fileURL: url)
         let presenter = SpyPresenter()
         let scheduler = Scheduler(clock: clock, store: store, presenter: presenter,
-                                  launchForced: launchForced, interval: 1)
+                                  launchForced: launchForced, interval: 1,
+                                  calendar: TestTime.calendar)
         return (scheduler, clock, store, presenter)
     }
 
