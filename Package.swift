@@ -6,6 +6,10 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "DakaCore"),
+        .executableTarget(
+            name: "Daka",
+            dependencies: ["DakaCore"]
+        ),
         .testTarget(name: "DakaCoreTests", dependencies: ["DakaCore"])
     ]
 )
