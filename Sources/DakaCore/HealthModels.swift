@@ -37,10 +37,12 @@ public struct HealthSettings: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = HealthSettings.default
         self.waterEnabled = try c.decodeIfPresent(Bool.self, forKey: .waterEnabled) ?? d.waterEnabled
-        self.waterGoalCups = try c.decodeIfPresent(Int.self, forKey: .waterGoalCups) ?? d.waterGoalCups
+        let waterGoal = try c.decodeIfPresent(Int.self, forKey: .waterGoalCups) ?? d.waterGoalCups
+        self.waterGoalCups = max(1, waterGoal)
         self.waterIntervalMinutes = try c.decodeIfPresent(Int.self, forKey: .waterIntervalMinutes) ?? d.waterIntervalMinutes
         self.movementEnabled = try c.decodeIfPresent(Bool.self, forKey: .movementEnabled) ?? d.movementEnabled
-        self.movementGoalCount = try c.decodeIfPresent(Int.self, forKey: .movementGoalCount) ?? d.movementGoalCount
+        let movementGoal = try c.decodeIfPresent(Int.self, forKey: .movementGoalCount) ?? d.movementGoalCount
+        self.movementGoalCount = max(1, movementGoal)
         self.movementIntervalMinutes = try c.decodeIfPresent(Int.self, forKey: .movementIntervalMinutes) ?? d.movementIntervalMinutes
     }
 }

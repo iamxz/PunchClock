@@ -80,4 +80,17 @@ final class HealthStoreTests: XCTestCase {
         XCTAssertThrowsError(try store.log(.water, at: day, calendar: cal))
         XCTAssertEqual(store.record(for: day, calendar: cal).cups, 0)
     }
+
+    func testDecodedNonPositiveGoalsAreClamped() throws {
+        let json = """
+        {
+          "settings": { "waterGoalCups": 0, "movementGoalCount": -3 },
+          "records": {}
+        }
+        """.data(using: .utf8)!
+        try json.write(to: url)
+        let store = HealthStore(fileURL: url)
+        XCTAssertEqual(store.data.settings.waterGoalCups, 1)
+        XCTAssertEqual(store.data.settings.movementGoalCount, 1)
+    }
 }

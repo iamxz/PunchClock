@@ -12,6 +12,11 @@ struct WaterToolView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                if let error = model.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 HStack(spacing: 12) {
                     HealthMetricCard(title: "今日喝水",
                                      value: "\(status.cups)/\(model.healthSettings.waterGoalCups) 杯",
@@ -99,6 +104,11 @@ struct MovementToolView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                if let error = model.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 HStack(spacing: 12) {
                     HealthMetricCard(title: "今日起身",
                                      value: "\(status.stands)/\(model.healthSettings.movementGoalCount) 次",
