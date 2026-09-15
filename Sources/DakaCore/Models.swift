@@ -114,13 +114,6 @@ public struct DayRecord: Codable, Equatable, Sendable {
     public var morningDoneAt: Date? { morningPunches.min() }
     public var eveningDoneAt: Date? { eveningPunches.max() }
 
-    public func isDone(_ task: PunchTask) -> Bool {
-        switch task {
-        case .morning: return morningDone
-        case .evening: return eveningDone
-        }
-    }
-
     private enum CodingKeys: String, CodingKey {
         case morningPunches, eveningPunches, skipped
         case morningDone, morningDoneAt, eveningDone, eveningDoneAt
