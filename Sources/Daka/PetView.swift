@@ -13,13 +13,13 @@ struct PetView: View {
 
     var body: some View {
         Text(mood.emoji)
-            .font(.system(size: 64))
-            .shadow(color: .black.opacity(0.18), radius: 3, y: 2)
-            .offset(y: animate ? -6 : 6)
+            .font(.system(size: 32))
+            .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+            .offset(y: animate ? -3 : 3)
             .rotationEffect(.degrees(animate ? 6 : -6))
             .scaleEffect(animate ? 1.08 : 0.94)
             .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: animate)
-            .frame(width: 96, height: 96)
+            .frame(width: 52, height: 52)
             .contentShape(Rectangle())
             .onTapGesture { onOpenPanel() }
             .contextMenu {
