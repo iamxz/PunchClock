@@ -21,6 +21,20 @@ final class AppModel: ObservableObject {
 
     var now: Date { clock.now }
 
+    var minWorkDuration: TimeInterval { settings.minWorkDuration }
+
+    var effectiveEveningPunch: Date? {
+        PunchRules.effectiveEveningPunch(record, minWorkDuration: settings.minWorkDuration)
+    }
+
+    var isEveningComplete: Bool {
+        PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration)
+    }
+
+    func setMinWorkHours(_ hours: Double) {
+        updateSettings { $0.minWorkDurationHours = hours }
+    }
+
     private let store: PunchStore
     private let clock: AdjustableClock
     private var scheduler: Scheduler?

@@ -74,7 +74,7 @@ final class ScheduleEvaluatorTests: XCTestCase {
                        [PendingReminder(task: .evening, level: .hard)])
     }
 
-    func testEveningAtMinimumClears() {
+    func testEveningAboveMinimumClears() {
         var settings = Settings.default
         settings.minWorkDurationHours = 8
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],

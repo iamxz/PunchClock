@@ -2,7 +2,6 @@ import XCTest
 @testable import DakaCore
 
 final class PunchRulesTests: XCTestCase {
-    private let cal = TestTime.calendar
     private let eight: TimeInterval = 8 * 3600
 
     func testNoMorningPunchIsNeverComplete() {

@@ -29,6 +29,14 @@ struct SettingsView: View {
                 }
             }
 
+            Section("考勤规则") {
+                Stepper(value: Binding(get: { model.settings.minWorkDurationHours },
+                                       set: { model.setMinWorkHours($0) }),
+                        in: 1...12, step: 0.5) {
+                    Text("每日最少工时：\(Self.hoursText(model.settings.minWorkDurationHours)) 小时")
+                }
+            }
+
             Section("今天") {
                 if model.record.skipped {
                     Button("恢复打卡提醒") { model.setSkipped(false) }
@@ -103,5 +111,9 @@ struct SettingsView: View {
     private static func hhmm(from date: Date) -> String {
         let c = Calendar.current.dateComponents([.hour, .minute], from: date)
         return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+    }
+
+    private static func hoursText(_ hours: Double) -> String {
+        hours == hours.rounded() ? String(Int(hours)) : String(format: "%.1f", hours)
     }
 }

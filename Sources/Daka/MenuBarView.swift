@@ -12,12 +12,14 @@ struct MenuBarView: View {
                 statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
                           count: model.record.morningPunches.count,
                           start: model.settings.morningWindowStart, deadline: model.settings.morningDeadline)
-                statusRow(.evening, done: model.record.eveningDone, at: model.record.eveningDoneAt,
+                statusRow(.evening, done: model.isEveningComplete, at: model.effectiveEveningPunch,
                           count: model.record.eveningPunches.count,
                           start: model.settings.eveningWindowStart, deadline: model.settings.eveningDeadline)
             }
 
-            PunchButton(task: PunchTarget.resolve(record: model.record, now: model.now)) { task in
+            PunchButton(task: PunchTarget.resolve(record: model.record,
+                                                  now: model.now,
+                                                  minWorkDuration: model.minWorkDuration)) { task in
                 model.punch(task)
             }
 
@@ -42,7 +44,8 @@ struct MenuBarView: View {
     }
 
     private func statusRow(_ task: PunchTask, done: Bool, at: Date?, count: Int, start: String, deadline: String) -> some View {
-        HStack {
+        let suffix = count > 1 ? "（\(count) 次）" : ""
+        return HStack {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(done ? Color.green : Color.secondary)
             Text(task.title)
@@ -53,11 +56,11 @@ struct MenuBarView: View {
             } else if scheduleInactive {
                 Text("今日不提醒").foregroundStyle(.secondary)
             } else if model.reminderState.hard.contains(task) {
-                Text("已过截止 \(deadline)").foregroundStyle(.red)
+                Text("已过截止 \(deadline)\(suffix)").foregroundStyle(.red)
             } else if model.reminderState.gentle.contains(task) {
-                Text("窗口内 \(start)–\(deadline)").foregroundStyle(.orange)
+                Text("窗口内 \(start)–\(deadline)\(suffix)").foregroundStyle(.orange)
             } else {
-                Text("待打卡 \(start)–\(deadline)").foregroundStyle(.secondary)
+                Text("待打卡 \(start)–\(deadline)\(suffix)").foregroundStyle(.secondary)
             }
         }
     }
