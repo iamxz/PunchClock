@@ -47,6 +47,32 @@ final class AppModel: ObservableObject {
             self.refreshRecord()
         }
         self.scheduler = scheduler
+
+        NotificationCenter.default.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scheduler?.tick() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .NSSystemClockDidChange,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scheduler?.tick() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .NSSystemTimeZoneDidChange,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scheduler?.tick() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scheduler?.tick() }
+        }
+
         scheduler.start()
     }
 
