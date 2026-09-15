@@ -15,6 +15,9 @@ final class AppModel: ObservableObject {
     @Published var scheduledLaunchWarning: String?
     @Published var scheduledLaunchInstalled = false
 
+    @Published var selectedTool: ToolID = .punch
+    let tools = ToolCatalog.all
+
     weak var mainWindow: MainWindowController?
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
@@ -176,6 +179,15 @@ final class AppModel: ObservableObject {
     }
 
     func openMainWindow() {
+        mainWindow?.show()
+    }
+
+    func selectTool(_ id: ToolID) {
+        selectedTool = id
+    }
+
+    func openControlCenter(selecting id: ToolID? = nil) {
+        if let id { selectedTool = id }
         mainWindow?.show()
     }
 
