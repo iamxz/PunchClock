@@ -15,6 +15,8 @@
 - **系统事件响应**：休眠唤醒、系统时间/时区变更后立即重算提醒。
 - **数据容错**：写盘原子替换；JSON 损坏时自动备份并重建，菜单栏可见错误。
 - **打卡统计**：主窗口「统计」页展示四张指标卡（本月打卡 / 连续打卡 / 平均上班 / 缺卡）与最近 7 / 14 / 30 天每日上班时长柱状图。
+- **喝水 / 走动**：桌宠会定时提醒你喝水、起身活动；点一下即可记录一杯水 / 一次起身，桌宠表情和气泡会回应。提醒只在工作日、打卡工作时段内生效。
+- **健康统计**：控制中心「喝水」「久坐」页展示今日进度、连续达标、平均每日与 7 / 14 / 30 天柱状图（含目标线）。
 
 ## 系统要求
 
@@ -81,6 +83,29 @@ make clean     # 清理 .build 与 build
 ```
 
 `records` 以 `yyyy-MM-dd` 为键保留全部历史。文件损坏时会重命名为 `data.json.corrupt-<时间戳>-*` 备份，并重建空存储。
+
+健康习惯记录单独保存在 `~/Library/Application Support/Daka/health.json`，结构如下：
+
+```jsonc
+{
+  "settings": {
+    "waterEnabled": true,
+    "waterGoalCups": 8,
+    "waterIntervalMinutes": 60,
+    "movementEnabled": true,
+    "movementGoalCount": 8,
+    "movementIntervalMinutes": 60
+  },
+  "records": {
+    "2026-09-14": {
+      "drinks": ["2026-09-14T09:12:00+08:00"],
+      "stands": ["2026-09-14T10:30:00+08:00"]
+    }
+  }
+}
+```
+
+损坏时同样备份为 `health.json.corrupt-<时间戳>-*` 并重建。
 
 ## 项目结构
 
