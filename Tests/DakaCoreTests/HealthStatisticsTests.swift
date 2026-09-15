@@ -36,9 +36,12 @@ final class HealthStatisticsTests: XCTestCase {
     func testStreakSkipsWeekendAndCountsConsecutiveWorkdays() {
         let now = TestTime.date(2026, 9, 14, 10, 0) // 周一
         var records: [String: DayHealthRecord] = [:]
-        records[record(cups: 8, on: TestTime.date(2026, 9, 14)).0] = record(cups: 8, on: TestTime.date(2026, 9, 14)).1
-        records[record(cups: 8, on: TestTime.date(2026, 9, 11)).0] = record(cups: 8, on: TestTime.date(2026, 9, 11)).1 // 周五
-        records[record(cups: 8, on: TestTime.date(2026, 9, 10)).0] = record(cups: 8, on: TestTime.date(2026, 9, 10)).1 // 周四
+        let (todayKey, todayRec) = record(cups: 8, on: TestTime.date(2026, 9, 14))
+        let (friKey, friRec) = record(cups: 8, on: TestTime.date(2026, 9, 11))
+        let (thuKey, thuRec) = record(cups: 8, on: TestTime.date(2026, 9, 10))
+        records[todayKey] = todayRec
+        records[friKey] = friRec
+        records[thuKey] = thuRec
 
         let summary = HealthStatistics.compute(records: records, settings: .default,
                                                schedule: schedule, now: now,
@@ -54,5 +57,32 @@ final class HealthStatisticsTests: XCTestCase {
                                                schedule: schedule, now: now,
                                                rangeDays: 14, calendar: cal)
         XCTAssertEqual(summary.waterStreak, 1)
+    }
+
+    func testNonWorkdayGoalExcluded() {
+        let now = TestTime.date(2026, 9, 14, 10, 0) // 周一
+        var records: [String: DayHealthRecord] = [:]
+        // 周六 9/12 喝水 10 杯、起身 9 次，均超目标，但非工作日不计入达标
+        let (satKey, satRec) = record(cups: 10, stands: 9, on: TestTime.date(2026, 9, 12))
+        records[satKey] = satRec
+
+        let summary = HealthStatistics.compute(records: records, settings: .default,
+                                               schedule: schedule, now: now,
+                                               rangeDays: 7, calendar: cal)
+        XCTAssertEqual(summary.waterGoalDays, 0)
+        XCTAssertEqual(summary.movementGoalDays, 0)
+    }
+
+    func testMovementGoalCountsToday() {
+        let now = TestTime.date(2026, 9, 14, 10, 0) // 周一
+        var records: [String: DayHealthRecord] = [:]
+        let (key, rec) = record(cups: 0, stands: 8, on: TestTime.date(2026, 9, 14))
+        records[key] = rec
+
+        let summary = HealthStatistics.compute(records: records, settings: .default,
+                                               schedule: schedule, now: now,
+                                               rangeDays: 7, calendar: cal)
+        XCTAssertEqual(summary.movementGoalDays, 1)
+        XCTAssertEqual(summary.movementStreak, 1)
     }
 }
