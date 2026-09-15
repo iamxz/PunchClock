@@ -110,7 +110,7 @@ final class SchedulerTests: XCTestCase {
         scheduler.tick()
         clock.now = TestTime.date(2026, 9, 15, 8, 0)
         scheduler.tick()
-        XCTAssertEqual(observed.count, 2)
+        XCTAssertEqual(observed, [ReminderState(), ReminderState()])
     }
 
     func testWeekendNeverShows() {
@@ -118,5 +118,17 @@ final class SchedulerTests: XCTestCase {
         scheduler.tick()
         XCTAssertNil(presenter.lastHard)
         XCTAssertNil(presenter.lastGentle)
+    }
+
+    func testHardToGentleAfterMorningPunched() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.morning])
+        XCTAssertNil(presenter.lastGentle)
+
+        try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastGentle, [.evening])
+        XCTAssertNil(presenter.lastHard)
     }
 }

@@ -81,4 +81,19 @@ final class ScheduleEvaluatorTests: XCTestCase {
         record.skipped = true
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), record: record), [])
     }
+
+    func testInvalidMorningTimesYieldNoMorningReminder() {
+        var settings = Settings.default
+        settings.morningWindowStart = "oops"
+        settings.morningDeadline = "oops"
+        // 10:00: morning unparseable -> none; evening window not reached yet -> none
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings), [])
+    }
+
+    func testInvalidStartWithValidDeadlineStillHardAfterDeadline() {
+        var settings = Settings.default
+        settings.morningWindowStart = "oops"
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings),
+                       [PendingReminder(task: .morning, level: .hard)])
+    }
 }

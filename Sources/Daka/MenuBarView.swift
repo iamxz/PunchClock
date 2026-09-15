@@ -78,9 +78,9 @@ struct MenuBarView: View {
             Divider()
 
             Button("退出 Daka") { model.quit() }
-                .disabled(model.hasPendingTasks)
-            if model.hasPendingTasks {
-                Text("有待完成的打卡，无法退出").font(.caption).foregroundStyle(.secondary)
+                .disabled(model.hasHardTasks)
+            if model.hasHardTasks {
+                Text("有已过期的打卡未完成，无法退出").font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(14)
