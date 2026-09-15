@@ -101,7 +101,7 @@ struct MenuBarView: View {
     private var scheduleInactive: Bool {
         !model.settings.enabled
             || model.record.skipped
-            || !model.settings.workdays.contains(DakaDate.weekday(of: Date()))
+            || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
     private func statusRow(task: PunchTask, done: Bool, at: Date?, start: String, deadline: String, inactive: Bool) -> some View {
@@ -125,27 +125,27 @@ struct MenuBarView: View {
     }
 
     private var morningStartBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.morningWindowStart) },
+        Binding(get: { dateFrom(model.settings.morningWindowStart) },
                 set: { model.updateMorningStart(Self.hhmm(from: $0)) })
     }
 
     private var morningDeadlineBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.morningDeadline) },
+        Binding(get: { dateFrom(model.settings.morningDeadline) },
                 set: { model.updateMorningDeadline(Self.hhmm(from: $0)) })
     }
 
     private var eveningStartBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.eveningWindowStart) },
+        Binding(get: { dateFrom(model.settings.eveningWindowStart) },
                 set: { model.updateEveningStart(Self.hhmm(from: $0)) })
     }
 
     private var eveningDeadlineBinding: Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings.eveningDeadline) },
+        Binding(get: { dateFrom(model.settings.eveningDeadline) },
                 set: { model.updateEveningDeadline(Self.hhmm(from: $0)) })
     }
 
-    private static func dateFrom(_ hhmm: String) -> Date {
-        DakaDate.date(on: Date(), at: hhmm) ?? Date()
+    private func dateFrom(_ hhmm: String) -> Date {
+        DakaDate.date(on: model.now, at: hhmm) ?? model.now
     }
 
     private static func hhmm(from date: Date) -> String {

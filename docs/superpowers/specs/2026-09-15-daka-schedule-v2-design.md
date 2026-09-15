@@ -59,7 +59,7 @@
 - `StartCalendarInterval` = 四个时间：`09:00`、`09:30`、`18:00`、`18:30`（跟随设置里的窗口开始/截止；窗口开始时拉起以便温和提醒，截止时拉起以便全屏）。
 - 安装：写 plist → `launchctl bootout gui/<uid>/com.xue.daka.schedule`（忽略错误）→ `launchctl bootstrap gui/<uid> <plist>`。
 - 设置变更（时间/开关）后重写并 reload。
-- 仅在以 `.app` bundle 运行时安装；`swift run` 下跳过。
+- 仅在应用从 `/Applications/` 运行时安装（避免从开发/`build/` 副本写出一个指向死路径的 agent）；否则跳过，菜单显示定点启动未启用。`swift run` 下同样跳过。
 
 **开机自启**（沿用 v1）：`SMAppService.mainApp` 登录项；失败时回退写 `~/Library/LaunchAgents/com.xue.daka.plist`（RunAtLoad）。
 
@@ -120,7 +120,7 @@ public protocol ReminderPresenting: AnyObject {
 
 `Scheduler.apply` 依据 `hard`/`gentle` 优先级调用 `showHard`/`showGentle`/`hide`；状态未变时调用 `refresh`。
 
-**可测试的纯逻辑**：`LaunchAgentPlist.make(settings:bundleID:) -> String` 放在 `DakaCore`，供单测断言生成的 plist 内容；`ScheduledLaunchManager`（app target）负责写文件与 `launchctl`。
+**可测试的纯逻辑**：`LaunchAgentPlist.make(morningWindowStart:morningDeadline:eveningWindowStart:eveningDeadline:bundleID:) -> String` 放在 `DakaCore`，供单测断言生成的 plist 内容；`ScheduledLaunchManager`（app target）负责写文件与 `launchctl`。
 
 ## 7. 应用层变更
 
@@ -128,9 +128,9 @@ public protocol ReminderPresenting: AnyObject {
   - `showGentle`：投递本地通知（`UNUserNotificationCenter`）并更新菜单栏等级；记录 `lastNotifyAt`。
   - `refresh`：若当前为 gentle 且距上次通知 ≥ `reminderIntervalSeconds`，再投递一次，更新 `lastNotifyAt`；屏幕参数变化时重建窗口。
   - 通知权限在启动时请求一次；未授权则温和提醒退化为仅菜单栏警示。
-- `AppModel`：`@Published private(set) var reminderState: ReminderState`；`hasPendingTasks`（任一等级）与 `hasHardTasks`；`onStateChange` 更新之。设置项改为 4 个时间；改动后重建 `ScheduledLaunchManager`。
+- `AppModel`：`@Published private(set) var reminderState: ReminderState`；`hasHardTasks`；`onStateChange` 更新之。设置项改为 4 个时间；改动后重建 `ScheduledLaunchManager`。
 - `MenuBarView`：显示上班/下班窗口与截止、当前等级；4 个 `DatePicker`。
-- `DakaApp`：菜单栏图标三态 —— 无待办（正常）、有 gentle（铃铛/橙色）、有 hard（警示/红色）。
+- `DakaApp`：菜单栏图标三态 —— 无待办（正常）、有 gentle（铃铛 `bell.badge`）、有 hard（警示 `exclamationmark.triangle.fill`）。
 - `AppDelegate`：单实例保护；仅在 `hasHardTasks` 时拦截退出。
 - `NotificationPresenter`（或并入 `ReminderController`）：封装 `UNUserNotificationCenter`，首次启动请求授权。
 

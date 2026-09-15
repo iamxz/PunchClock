@@ -17,6 +17,8 @@ final class AppModel: ObservableObject {
 
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
+    var now: Date { clock.now }
+
     private let store: PunchStore
     private let clock: AdjustableClock
     private var scheduler: Scheduler?

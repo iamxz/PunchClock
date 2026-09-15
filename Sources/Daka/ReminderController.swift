@@ -28,7 +28,7 @@ final class OverlayWindow: NSWindow {
 }
 
 @MainActor
-final class ReminderController: ReminderPresenting {
+final class ReminderController: @preconcurrency ReminderPresenting {
     private let reassertInterval: TimeInterval
     private let overlayModel = OverlayModel()
     private var windows: [OverlayWindow] = []
