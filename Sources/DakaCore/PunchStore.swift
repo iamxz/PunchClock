@@ -30,11 +30,9 @@ public final class PunchStore {
         var rec = previous ?? DayRecord()
         switch task {
         case .morning:
-            rec.morningDone = true
-            rec.morningDoneAt = date
+            rec.morningPunches.append(date)
         case .evening:
-            rec.eveningDone = true
-            rec.eveningDoneAt = date
+            rec.eveningPunches.append(date)
         }
         data.records[key] = rec
         try persist(rollingBack: { self.data.records[key] = previous })

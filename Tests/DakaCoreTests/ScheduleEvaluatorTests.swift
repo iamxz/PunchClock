@@ -53,16 +53,14 @@ final class ScheduleEvaluatorTests: XCTestCase {
     }
 
     func testMorningDoneOnlyEveningGentle() {
-        var record = DayRecord()
-        record.morningDone = true
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 10), record: record),
                        [PendingReminder(task: .evening, level: .gentle)])
     }
 
     func testBothDoneNoReminders() {
-        var record = DayRecord()
-        record.morningDone = true
-        record.eveningDone = true
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 18, 30)])
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 23, 0), record: record), [])
     }
 
@@ -77,8 +75,7 @@ final class ScheduleEvaluatorTests: XCTestCase {
     }
 
     func testSkippedNoReminders() {
-        var record = DayRecord()
-        record.skipped = true
+        let record = DayRecord(skipped: true)
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), record: record), [])
     }
 

@@ -92,29 +92,59 @@ public struct Settings: Codable, Equatable, Sendable {
 }
 
 public struct DayRecord: Codable, Equatable, Sendable {
-    public var morningDone: Bool
-    public var morningDoneAt: Date?
-    public var eveningDone: Bool
-    public var eveningDoneAt: Date?
+    public var morningPunches: [Date]
+    public var eveningPunches: [Date]
     public var skipped: Bool
 
-    public init(morningDone: Bool = false,
-                morningDoneAt: Date? = nil,
-                eveningDone: Bool = false,
-                eveningDoneAt: Date? = nil,
-                skipped: Bool = false) {
-        self.morningDone = morningDone
-        self.morningDoneAt = morningDoneAt
-        self.eveningDone = eveningDone
-        self.eveningDoneAt = eveningDoneAt
+    public init(morningPunches: [Date] = [], eveningPunches: [Date] = [], skipped: Bool = false) {
+        self.morningPunches = morningPunches
+        self.eveningPunches = eveningPunches
         self.skipped = skipped
     }
+
+    public var morningDone: Bool { !morningPunches.isEmpty }
+    public var eveningDone: Bool { !eveningPunches.isEmpty }
+    public var morningDoneAt: Date? { morningPunches.min() }
+    public var eveningDoneAt: Date? { eveningPunches.max() }
 
     public func isDone(_ task: PunchTask) -> Bool {
         switch task {
         case .morning: return morningDone
         case .evening: return eveningDone
         }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case morningPunches, eveningPunches, skipped
+        case morningDone, morningDoneAt, eveningDone, eveningDoneAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.skipped = try c.decodeIfPresent(Bool.self, forKey: .skipped) ?? false
+
+        if let morning = try c.decodeIfPresent([Date].self, forKey: .morningPunches) {
+            self.morningPunches = morning
+        } else if try c.decodeIfPresent(Bool.self, forKey: .morningDone) ?? false {
+            self.morningPunches = [try c.decodeIfPresent(Date.self, forKey: .morningDoneAt) ?? Date()]
+        } else {
+            self.morningPunches = []
+        }
+
+        if let evening = try c.decodeIfPresent([Date].self, forKey: .eveningPunches) {
+            self.eveningPunches = evening
+        } else if try c.decodeIfPresent(Bool.self, forKey: .eveningDone) ?? false {
+            self.eveningPunches = [try c.decodeIfPresent(Date.self, forKey: .eveningDoneAt) ?? Date()]
+        } else {
+            self.eveningPunches = []
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(morningPunches, forKey: .morningPunches)
+        try c.encode(eveningPunches, forKey: .eveningPunches)
+        try c.encode(skipped, forKey: .skipped)
     }
 }
 

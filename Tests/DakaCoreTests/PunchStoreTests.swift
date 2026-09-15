@@ -121,4 +121,46 @@ final class PunchStoreTests: XCTestCase {
         XCTAssertThrowsError(try store.mark(.morning, at: day, calendar: TestTime.calendar))
         XCTAssertFalse(store.record(for: day, calendar: TestTime.calendar).morningDone)
     }
+
+    func testMorningPunchesAccumulateEarliestWins() throws {
+        let first = TestTime.date(2026, 9, 14, 9, 0)
+        let second = TestTime.date(2026, 9, 14, 10, 30)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.morning, at: first, calendar: TestTime.calendar)
+        try store.mark(.morning, at: second, calendar: TestTime.calendar)
+        let record = store.record(for: first, calendar: TestTime.calendar)
+        XCTAssertEqual(record.morningPunches.count, 2)
+        XCTAssertEqual(record.morningDoneAt?.timeIntervalSince1970 ?? 0, first.timeIntervalSince1970, accuracy: 1)
+        XCTAssertEqual(record.eveningPunches.count, 0)
+
+        let reloaded = PunchStore(fileURL: url)
+        XCTAssertEqual(reloaded.record(for: first, calendar: TestTime.calendar).morningPunches.count, 2)
+    }
+
+    func testEveningPunchesAccumulateLatestWins() throws {
+        let first = TestTime.date(2026, 9, 14, 17, 0)
+        let second = TestTime.date(2026, 9, 14, 18, 10)
+        let store = PunchStore(fileURL: url)
+        try store.mark(.evening, at: first, calendar: TestTime.calendar)
+        try store.mark(.evening, at: second, calendar: TestTime.calendar)
+        let record = store.record(for: first, calendar: TestTime.calendar)
+        XCTAssertEqual(record.eveningPunches.count, 2)
+        XCTAssertEqual(record.eveningDoneAt?.timeIntervalSince1970 ?? 0, second.timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testLegacyRecordDecodesToPunchList() throws {
+        let legacyJSON = """
+        {
+          "morningDone": true,
+          "morningDoneAt": "2026-09-14T01:00:00Z",
+          "eveningDone": false,
+          "skipped": false
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(DayRecord.self, from: legacyJSON)
+        XCTAssertEqual(decoded.morningPunches.count, 1)
+        XCTAssertTrue(decoded.morningDone)
+        XCTAssertFalse(decoded.eveningDone)
+    }
 }

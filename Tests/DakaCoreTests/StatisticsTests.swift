@@ -10,10 +10,8 @@ final class StatisticsTests: XCTestCase {
         for (day, morning, evening, mat, eat, skipped) in items {
             let key = DakaDate.key(for: day, calendar: cal)
             var r = DayRecord()
-            r.morningDone = morning
-            r.eveningDone = evening
-            r.morningDoneAt = mat
-            r.eveningDoneAt = eat
+            r.morningPunches = morning ? [mat ?? Date(timeIntervalSince1970: 0)] : []
+            r.eveningPunches = evening ? [eat ?? Date(timeIntervalSince1970: 0)] : []
             r.skipped = skipped
             result[key] = r
         }
