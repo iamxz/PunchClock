@@ -6,7 +6,7 @@ struct ControlCenterView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: toolSelection) {
+            List(selection: sidebarSelection) {
                 ForEach(model.tools) { tool in
                     VStack(alignment: .leading, spacing: 2) {
                         Label(tool.title, systemImage: tool.symbol)
@@ -14,12 +14,19 @@ struct ControlCenterView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .tag(tool.id)
+                    .tag(SidebarSelection.tool(tool.id))
+                }
+
+                Section("设置") {
+                    ForEach(SettingsPage.allCases) { page in
+                        Label(page.title, systemImage: page.symbol)
+                            .tag(SidebarSelection.settings(page))
+                    }
                 }
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 260)
         } detail: {
-            detail(for: model.selectedTool)
+            detail(for: model.selectedSidebar)
                 .padding(20)
         }
         .frame(minWidth: 720, minHeight: 520)
@@ -41,18 +48,26 @@ struct ControlCenterView: View {
         }
     }
 
-    private var toolSelection: Binding<ToolID?> {
-        Binding(get: { model.selectedTool },
-                set: { if let value = $0 { model.selectTool(value) } })
+    private var sidebarSelection: Binding<SidebarSelection?> {
+        Binding(get: { model.selectedSidebar },
+                set: { if let value = $0 { model.select(value) } })
     }
 
     @ViewBuilder
-    private func detail(for id: ToolID) -> some View {
-        switch id {
-        case .punch:
+    private func detail(for selection: SidebarSelection) -> some View {
+        switch selection {
+        case .tool(.punch):
             PunchToolView(model: model)
-        default:
+        case .tool(let id):
             ComingSoonView(metadata: ToolCatalog.metadata(for: id))
+        case .settings(.schedule):
+            ScheduleSettingsView(model: model)
+        case .settings(.workdays):
+            WorkdaySettingsView(model: model)
+        case .settings(.attendance):
+            AttendanceSettingsView(model: model)
+        case .settings(.system):
+            SystemSettingsView(model: model)
         }
     }
 }

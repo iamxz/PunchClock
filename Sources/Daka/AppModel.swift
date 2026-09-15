@@ -19,7 +19,7 @@ final class AppModel: ObservableObject {
         errorMessage != nil || startupWarning != nil || scheduledLaunchWarning != nil
     }
 
-    @Published var selectedTool: ToolID = .punch
+    @Published var selectedSidebar: SidebarSelection = .tool(.punch)
     let tools = ToolCatalog.all
 
     @Published var petVisible: Bool
@@ -187,12 +187,12 @@ final class AppModel: ObservableObject {
         objectWillChange.send()
     }
 
-    func selectTool(_ id: ToolID) {
-        selectedTool = id
+    func select(_ item: SidebarSelection) {
+        selectedSidebar = item
     }
 
     func openControlCenter(selecting id: ToolID? = nil) {
-        if let id { selectedTool = id }
+        if let id { selectedSidebar = .tool(id) }
         mainWindow?.show()
     }
 
