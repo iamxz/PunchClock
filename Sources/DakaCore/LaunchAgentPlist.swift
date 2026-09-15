@@ -20,7 +20,8 @@ public enum LaunchAgentPlist {
 
         var plist: [String: Any] = [
             "Label": label,
-            "ProgramArguments": ["/usr/bin/open", "-b", bundleID, "--args", "--background"]
+            "ProgramArguments": ["/bin/sh", "-c",
+                                 "/usr/bin/pgrep -x Daka >/dev/null 2>&1 || /usr/bin/open -b \(bundleID) --args --background"]
         ]
         if !intervals.isEmpty {
             plist["StartCalendarInterval"] = intervals

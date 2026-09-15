@@ -44,7 +44,6 @@
 ### 4.1 统计页
 
 - 顶部指标卡：
-  - 今日状态（上班/下班是否完成）
   - 本月打卡天数（当月工作日中两次都完成的天数）
   - 连续打卡天数
   - 平均上班时长（当天两次都完成的平均值）
@@ -125,7 +124,7 @@ public enum Statistics {
 - `MenuBarView`（改）：精简为 §3 内容。
 - `AppModel`：新增 `statistics(rangeDays:) -> StatisticsSummary`（委托 `Statistics.compute`）；`openMainWindow()`（回调到 `MainWindowController`）。
 - `DakaApp`：保留 `MenuBarExtra`；不再需要其它 Scene（主窗口由 `MainWindowController` 管理）。菜单栏命令可保留默认。
-- `LaunchAgentPlist`：`ProgramArguments` 增加 `--args` `--background`（即 `[/usr/bin/open, -b, <id>, --args, --background]`）。
+- `LaunchAgentPlist`：`ProgramArguments` 用 shell 包装，仅在应用未运行时才 `open --args --background`（即 `[/bin/sh, -c, "/usr/bin/pgrep -x Daka >/dev/null 2>&1 || /usr/bin/open -b <id> --args --background"]`），避免热运行时 `open` 触发 reopen 弹窗。
 
 ## 8. 图标
 
