@@ -95,4 +95,34 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(observed, [.morning])
         XCTAssertTrue(scheduler.hasPendingTasks)
     }
+
+    func testRefreshCalledOnSubsequentPendingTicks() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
+        scheduler.tick()
+        XCTAssertEqual(presenter.refreshCount, 0)
+        scheduler.tick()
+        XCTAssertEqual(presenter.refreshCount, 1)
+    }
+
+    func testRefreshNotCalledWhenNothingPending() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 8, 0))
+        scheduler.tick()
+        scheduler.tick()
+        XCTAssertEqual(presenter.refreshCount, 0)
+    }
+
+    func testStateChangeFiresOnlyOnTransition() {
+        let (scheduler, clock, store, _) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
+        var observed: [[PunchTask]] = []
+        scheduler.onStateChange = { observed.append($0) }
+
+        scheduler.tick()
+        scheduler.tick()
+        XCTAssertEqual(observed, [[.morning]])
+
+        try? store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
+        scheduler.tick()
+        XCTAssertEqual(observed, [[.morning], []])
+        XCTAssertFalse(scheduler.hasPendingTasks)
+    }
 }

@@ -15,7 +15,8 @@ public final class Scheduler {
     private let store: PunchStore
     private weak var presenter: ReminderPresenting?
     private let interval: TimeInterval
-    private let calendar: Calendar
+    private let calendarOverride: Calendar?
+    private var calendar: Calendar { calendarOverride ?? .current }
 
     private var launchForcedPending: Bool
     private var timer: Timer?
@@ -29,14 +30,18 @@ public final class Scheduler {
                 presenter: ReminderPresenting,
                 launchForced: Bool = false,
                 interval: TimeInterval = 1,
-                calendar: Calendar = .current) {
+                calendar: Calendar? = nil) {
         self.clock = clock
         self.evaluator = evaluator
         self.store = store
         self.presenter = presenter
         self.launchForcedPending = launchForced
         self.interval = interval
-        self.calendar = calendar
+        self.calendarOverride = calendar
+    }
+
+    deinit {
+        stop()
     }
 
     public func start() {
@@ -79,7 +84,8 @@ public final class Scheduler {
 
     private func apply(tasks: [PunchTask], now: Date) {
         hasPendingTasks = !tasks.isEmpty
-        if tasks != lastTasks {
+        let changed = tasks != lastTasks
+        if changed {
             lastTasks = tasks
             if tasks.isEmpty {
                 presenter?.hide()
@@ -89,6 +95,8 @@ public final class Scheduler {
         } else if !tasks.isEmpty {
             presenter?.refresh(now: now)
         }
-        onStateChange?(tasks)
+        if changed {
+            onStateChange?(tasks)
+        }
     }
 }
