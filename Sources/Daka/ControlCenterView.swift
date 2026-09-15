@@ -66,5 +66,6 @@ private struct PetToolbarToggle: View {
             Image(systemName: model.petVisible ? "pawprint.fill" : "pawprint")
         }
         .help(model.petVisible ? "隐藏桌宠" : "显示桌宠")
+        .accessibilityLabel(model.petVisible ? "隐藏桌宠" : "显示桌宠")
     }
 }

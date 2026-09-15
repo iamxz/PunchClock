@@ -20,6 +20,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             created.title = "Daka"
             created.isReleasedWhenClosed = false
             created.contentViewController = NSHostingController(rootView: ControlCenterView(model: model))
+            created.setContentSize(NSSize(width: 860, height: 600))
             created.delegate = self
             created.center()
             created.setFrameAutosaveName("DakaMainWindow")
