@@ -63,7 +63,7 @@ public struct ReminderState: Equatable, Sendable {
 - `showHard`：全屏遮罩窗口置顶 + 启动「置顶重弹」计时器。
 - **间隔即时生效**：`refresh(settings:now:)` 中，若 `settings.effectiveReminderIntervalSeconds` 与当前计时器间隔不同，则重启计时器。
 - `hide` 停止计时器、隐藏窗口。
-- 删除 `Sources/Daka/GentleNotifier.swift`。
+- `GentleNotifier.swift` **保留**：它仍被 `HealthReminderController`（喝水/走动通知）使用，仅从 `ReminderController` 移除调用。
 
 ## 6. 设置与模型（`Settings` / `AppModel`）
 
