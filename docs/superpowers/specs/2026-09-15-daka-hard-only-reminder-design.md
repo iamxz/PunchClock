@@ -80,7 +80,7 @@ func setReminderIntervalMinutes(_ minutes: Int)   // 钳制 1...60，写秒
 ## 7. 界面联动
 
 - 菜单栏图标改为两态（`DakaApp`）：有待打卡 → `exclamationmark.triangle.fill`；否则 `checkmark.seal`。去掉 `bell.badge`。
-- 菜单栏面板状态行（`MenuBarView`）：窗口内显示「待打卡 start–deadline」，过截止显示红色「已过截止 deadline」；两者都是强提醒。去掉 gentle 分支。
+- 菜单栏面板状态行（`MenuBarView`）：窗口内显示橙色「窗口内 start–deadline」，过截止显示红色「已过截止 deadline」，窗口前显示「待打卡 start–deadline」；都是强提醒。去掉 gentle 分支。
 - 桌宠表情（`PetMood`）：`gentlePending` / `hardPending` 合并为单一 `punchPending`（😰）；`resolve` 只要 `!pending.isEmpty` 即返回 `.punchPending`。
 
 ## 8. 边界

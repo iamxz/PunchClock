@@ -1,7 +1,7 @@
 import Foundation
 import UserNotifications
 
-/// 本地通知通道：通用标题/正文通知。未打包运行或无权限时静默（菜单栏警示仍在）。
+/// 本地通知封装：用于健康提醒（喝水 / 走动）。未打包运行或无权限时静默。
 final class GentleNotifier {
     private var center: UNUserNotificationCenter? {
         guard Bundle.main.bundleIdentifier != nil else { return nil }
