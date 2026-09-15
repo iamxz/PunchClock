@@ -34,4 +34,41 @@ final class PetMoodTests: XCTestCase {
             XCTAssertFalse(mood.emoji.isEmpty)
         }
     }
+
+    func testHealthOverridesTimeWithThirstyFirst() {
+        let status = HealthStatus(cups: 0, stands: 0,
+                                  minutesSinceDrink: 90, minutesSinceStand: 90,
+                                  waterDue: true, movementDue: true, active: true)
+        let mood = PetMood.resolve(reminderState: ReminderState(),
+                                   now: TestTime.date(2026, 9, 14, 10, 0),
+                                   health: status, calendar: cal)
+        XCTAssertEqual(mood, .thirsty)
+    }
+
+    func testRestlessWhenOnlyMovementDue() {
+        let status = HealthStatus(cups: 3, stands: 0,
+                                  minutesSinceDrink: 10, minutesSinceStand: 90,
+                                  waterDue: false, movementDue: true, active: true)
+        let mood = PetMood.resolve(reminderState: ReminderState(),
+                                   now: TestTime.date(2026, 9, 14, 10, 0),
+                                   health: status, calendar: cal)
+        XCTAssertEqual(mood, .restless)
+    }
+
+    func testPunchPendingOverridesHealth() {
+        let status = HealthStatus(cups: 0, stands: 0,
+                                  minutesSinceDrink: 90, minutesSinceStand: 90,
+                                  waterDue: true, movementDue: true, active: true)
+        let mood = PetMood.resolve(reminderState: ReminderState(gentle: [.morning]),
+                                   now: TestTime.date(2026, 9, 14, 10, 0),
+                                   health: status, calendar: cal)
+        XCTAssertEqual(mood, .gentlePending)
+    }
+
+    func testIdleHealthStatusKeepsTimeMood() {
+        let mood = PetMood.resolve(reminderState: ReminderState(),
+                                   now: TestTime.date(2026, 9, 14, 10, 0),
+                                   health: .idle, calendar: cal)
+        XCTAssertEqual(mood, .cheerful)
+    }
 }
