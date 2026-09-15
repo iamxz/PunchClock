@@ -7,7 +7,9 @@ final class OverlayWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    override func cancelOperation(_ sender: Any?) {}
+    var onEscape: (() -> Void)?
+
+    override func cancelOperation(_ sender: Any?) { onEscape?() }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command),
@@ -19,7 +21,7 @@ final class OverlayWindow: NSWindow {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { return } // ESC
+        if event.keyCode == 53 { onEscape?(); return } // ESC：暂停提醒
         super.keyDown(with: event)
     }
 
@@ -34,6 +36,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     private var windows: [OverlayWindow] = []
     private var builtFrames: [CGRect] = []
     private var reassertTimer: Timer?
+    private var snoozeTimer: Timer?
     private var currentTasks: [PunchTask] = []
 
     init(interval: TimeInterval, onPunch: @escaping (PunchTask) -> Void) {
@@ -42,6 +45,9 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     }
 
     func showHard(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
+        snoozeTimer?.invalidate()
+        snoozeTimer = nil
+        overlayModel.message = nil
         currentTasks = tasks
         overlayModel.tasks = tasks
         overlayModel.settings = settings
@@ -70,10 +76,14 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         stopReassertTimer()
         currentTasks = []
         for w in windows { w.orderOut(nil) }
+        snoozeTimer?.invalidate()
+        snoozeTimer = nil
+        overlayModel.message = nil
     }
 
     deinit {
         reassertTimer?.invalidate()
+        snoozeTimer?.invalidate()
     }
 
     private func rebuildWindowsIfNeeded() {
@@ -96,6 +106,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
             window.hasShadow = false
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: OverlayView(model: overlayModel))
+            window.onEscape = { [weak self] in self?.snooze() }
             return window
         }
 
@@ -121,5 +132,31 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     private func stopReassertTimer() {
         reassertTimer?.invalidate()
         reassertTimer = nil
+    }
+
+    func snooze() {
+        guard !currentTasks.isEmpty else { return }
+        stopReassertTimer()
+        for w in windows { w.orderOut(nil) }
+        snoozeTimer?.invalidate()
+        let t = Timer(timeInterval: reassertInterval, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.resume() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        snoozeTimer = t
+    }
+
+    func showMessage(_ text: String?) {
+        overlayModel.message = text
+    }
+
+    private func resume() {
+        snoozeTimer?.invalidate()
+        snoozeTimer = nil
+        guard !currentTasks.isEmpty else { return }
+        rebuildWindowsIfNeeded()
+        for w in windows { w.makeKeyAndOrderFront(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+        startReassertTimer()
     }
 }

@@ -247,6 +247,10 @@ final class AppModel: ObservableObject {
             try store.mark(task, at: clock.now)
             refreshRecord()
             scheduler?.tick()
+            reminder?.showMessage(PunchFeedback.text(task: task,
+                                                      record: record,
+                                                      settings: settings,
+                                                      punchedAt: clock.now))
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }

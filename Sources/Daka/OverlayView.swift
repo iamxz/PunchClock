@@ -6,6 +6,7 @@ final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []
     @Published var settings: DakaCore.Settings = .default
     @Published var now: Date = Date()
+    @Published var message: String?
     var onPunch: (PunchTask) -> Void = { _ in }
 }
 
@@ -25,6 +26,13 @@ struct OverlayView: View {
                 Text("当前时间 " + Self.timeFormatter.string(from: model.now))
                     .font(.system(size: 22))
                     .foregroundStyle(.gray)
+                if let message = model.message {
+                    Text(message)
+                        .font(.system(size: 18))
+                        .foregroundStyle(.orange)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 560)
+                }
                 ForEach(model.tasks, id: \.self) { task in
                     VStack(spacing: 8) {
                         Button {
