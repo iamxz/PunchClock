@@ -252,6 +252,39 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func addPunch(_ task: PunchTask, at time: Date) {
+        errorMessage = nil
+        do {
+            try store.mark(task, at: time)
+            refreshRecord()
+            scheduler?.tick()
+        } catch {
+            errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
+        }
+    }
+
+    func updatePunch(_ task: PunchTask, index: Int, to time: Date) {
+        errorMessage = nil
+        do {
+            try store.updatePunch(task, at: index, to: time, on: clock.now)
+            refreshRecord()
+            scheduler?.tick()
+        } catch {
+            errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
+        }
+    }
+
+    func removePunch(_ task: PunchTask, index: Int) {
+        errorMessage = nil
+        do {
+            try store.removePunch(task, at: index, on: clock.now)
+            refreshRecord()
+            scheduler?.tick()
+        } catch {
+            errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
+        }
+    }
+
     func setSkipped(_ skipped: Bool) {
         errorMessage = nil
         do {
