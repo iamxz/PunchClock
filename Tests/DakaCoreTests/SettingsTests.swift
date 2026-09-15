@@ -45,4 +45,14 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(decoded.enabled)
         XCTAssertEqual(decoded.morningWindowStart, "09:00")
     }
+
+    func testReminderIntervalIsClampedForInvaliValues() {
+        var s = Settings.default
+        s.reminderIntervalSeconds = 0
+        XCTAssertEqual(s.effectiveReminderIntervalSeconds, 30)
+        s.reminderIntervalSeconds = -5
+        XCTAssertEqual(s.effectiveReminderIntervalSeconds, 30)
+        s.reminderIntervalSeconds = 120
+        XCTAssertEqual(s.effectiveReminderIntervalSeconds, 120)
+    }
 }

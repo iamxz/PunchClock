@@ -13,7 +13,6 @@ final class AppModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var startupWarning: String?
 
-    var hasPendingTasks: Bool { !reminderState.isEmpty }
     var hasHardTasks: Bool { !reminderState.hard.isEmpty }
 
     private let store: PunchStore
@@ -42,7 +41,7 @@ final class AppModel: ObservableObject {
             startupWarning = warnings.joined(separator: "\n")
         }
 
-        let reminder = ReminderController(interval: settings.reminderIntervalSeconds) { [weak self] task in
+        let reminder = ReminderController(interval: settings.effectiveReminderIntervalSeconds) { [weak self] task in
             self?.punch(task)
         }
         self.reminder = reminder

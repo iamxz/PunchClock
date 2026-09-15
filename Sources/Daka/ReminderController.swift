@@ -78,7 +78,7 @@ final class ReminderController: ReminderPresenting {
         if currentLevel == .hard {
             rebuildWindowsIfNeeded()
         } else if currentLevel == .gentle {
-            if let last = lastNotifyAt, now.timeIntervalSince(last) >= settings.reminderIntervalSeconds {
+            if let last = lastNotifyAt, now.timeIntervalSince(last) >= settings.effectiveReminderIntervalSeconds {
                 notifier.notify(tasks: gentleTasks)
                 lastNotifyAt = now
             }

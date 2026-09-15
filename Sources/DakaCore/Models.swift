@@ -64,6 +64,11 @@ public struct Settings: Codable, Equatable, Sendable {
         self.reminderIntervalSeconds = reminderIntervalSeconds
     }
 
+    /// 提醒间隔下限 30 秒，避免异常配置导致每秒刷屏。
+    public var effectiveReminderIntervalSeconds: TimeInterval {
+        max(30, reminderIntervalSeconds)
+    }
+
     public static let `default` = Settings()
 
     private enum CodingKeys: String, CodingKey {
