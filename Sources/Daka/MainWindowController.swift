@@ -22,8 +22,8 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             created.isReleasedWhenClosed = false
             created.contentView = hosting
             created.delegate = self
-            created.setFrameAutosaveName("DakaMainWindow")
             created.center()
+            created.setFrameAutosaveName("DakaMainWindow")
             window = created
         }
         window?.makeKeyAndOrderFront(nil)

@@ -92,12 +92,12 @@ struct SettingsView: View {
 
     private func bound(_ keyPath: KeyPath<DakaCore.Settings, String>,
                        _ update: @escaping (String) -> Void) -> Binding<Date> {
-        Binding(get: { Self.dateFrom(model.settings[keyPath: keyPath]) },
+        Binding(get: { Self.dateFrom(model.settings[keyPath: keyPath], now: model.now) },
                 set: { update(Self.hhmm(from: $0)) })
     }
 
-    private static func dateFrom(_ hhmm: String) -> Date {
-        DakaDate.date(on: Date(), at: hhmm) ?? Date()
+    private static func dateFrom(_ hhmm: String, now: Date) -> Date {
+        DakaDate.date(on: now, at: hhmm) ?? now
     }
 
     private static func hhmm(from date: Date) -> String {

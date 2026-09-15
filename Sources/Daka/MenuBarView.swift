@@ -44,6 +44,8 @@ struct MenuBarView: View {
             Spacer()
             if done, let at {
                 Text(Self.timeFormatter.string(from: at)).foregroundStyle(.secondary)
+            } else if scheduleInactive {
+                Text("今日不提醒").foregroundStyle(.secondary)
             } else if model.reminderState.hard.contains(task) {
                 Text("已过截止 \(deadline)").foregroundStyle(.red)
             } else if model.reminderState.gentle.contains(task) {
@@ -52,6 +54,12 @@ struct MenuBarView: View {
                 Text("待打卡 \(start)–\(deadline)").foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var scheduleInactive: Bool {
+        !model.settings.enabled
+            || model.record.skipped
+            || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
     private static let timeFormatter: DateFormatter = {
