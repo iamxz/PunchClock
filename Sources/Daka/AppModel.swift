@@ -214,10 +214,10 @@ final class AppModel: ObservableObject {
         alert.messageText = "退出 Daka？"
         alert.informativeText = "退出后将无法提醒打卡，直到下次开机或手动启动。"
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "仍要退出")
         alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: "仍要退出")
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runModal() == .alertSecondButtonReturn else { return }
         allowTermination = true
         NSApp.terminate(nil)
     }
