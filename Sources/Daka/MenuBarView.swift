@@ -5,35 +5,44 @@ struct MenuBarView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 12) {
             Text("今日打卡").font(.headline)
 
-            statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
-                      start: model.settings.morningWindowStart, deadline: model.settings.morningDeadline)
-            statusRow(.evening, done: model.record.eveningDone, at: model.record.eveningDoneAt,
-                      start: model.settings.eveningWindowStart, deadline: model.settings.eveningDeadline)
+            VStack(spacing: 6) {
+                statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
+                          start: model.settings.morningWindowStart, deadline: model.settings.morningDeadline)
+                statusRow(.evening, done: model.record.eveningDone, at: model.record.eveningDoneAt,
+                          start: model.settings.eveningWindowStart, deadline: model.settings.eveningDeadline)
+            }
+
+            PunchButton(task: pendingTask) { task in
+                model.punch(task)
+            }
 
             Divider()
 
             HStack {
-                Button("上班打卡") { model.punch(.morning) }
-                    .disabled(model.record.morningDone)
-                Button("下班打卡") { model.punch(.evening) }
-                    .disabled(model.record.eveningDone)
-            }
-
-            Divider()
-
-            Button("打开 Daka") { model.openMainWindow() }
-            Button("退出 Daka") { model.quit() }
-                .disabled(model.hasHardTasks)
-
-            if let warning = model.scheduledLaunchWarning {
-                Text(warning).font(.caption).foregroundStyle(.orange)
+                Button("显示") { model.openMainWindow() }
+                    .frame(maxWidth: .infinity)
+                Button("退出") { model.quit() }
+                    .frame(maxWidth: .infinity)
+                    .disabled(model.hasHardTasks)
             }
         }
-        .padding(14)
-        .frame(width: 280)
+        .padding(16)
+        .frame(width: 220)
+    }
+
+    private var pendingTask: PunchTask? {
+        if !model.record.morningDone { return .morning }
+        if !model.record.eveningDone { return .evening }
+        return nil
+    }
+
+    private var scheduleInactive: Bool {
+        !model.settings.enabled
+            || model.record.skipped
+            || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
     private func statusRow(_ task: PunchTask, done: Bool, at: Date?, start: String, deadline: String) -> some View {
@@ -54,12 +63,6 @@ struct MenuBarView: View {
                 Text("待打卡 \(start)–\(deadline)").foregroundStyle(.secondary)
             }
         }
-    }
-
-    private var scheduleInactive: Bool {
-        !model.settings.enabled
-            || model.record.skipped
-            || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
     private static let timeFormatter: DateFormatter = {
