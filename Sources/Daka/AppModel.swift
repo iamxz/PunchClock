@@ -109,6 +109,7 @@ final class AppModel: ObservableObject {
                                                       healthStore: healthStore,
                                                       scheduleStore: store)
         healthReminder.onSpeak = { [weak self] text in self?.say(text) }
+        healthReminder.onTick = { [weak self] in self?.refreshHealth() }
         self.healthReminder = healthReminder
         healthReminder.start()
 
@@ -118,25 +119,37 @@ final class AppModel: ObservableObject {
             forName: NSWorkspace.didWakeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduler?.tick() }
+            MainActor.assumeIsolated {
+                self?.scheduler?.tick()
+                self?.healthReminder?.tick()
+            }
         }
         NotificationCenter.default.addObserver(
             forName: .NSSystemClockDidChange,
             object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduler?.tick() }
+            MainActor.assumeIsolated {
+                self?.scheduler?.tick()
+                self?.healthReminder?.tick()
+            }
         }
         NotificationCenter.default.addObserver(
             forName: .NSSystemTimeZoneDidChange,
             object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduler?.tick() }
+            MainActor.assumeIsolated {
+                self?.scheduler?.tick()
+                self?.healthReminder?.tick()
+            }
         }
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduler?.tick() }
+            MainActor.assumeIsolated {
+                self?.scheduler?.tick()
+                self?.healthReminder?.tick()
+            }
         }
 
         scheduler.start()
@@ -281,11 +294,13 @@ final class AppModel: ObservableObject {
     func debugAdvanceClock(by seconds: TimeInterval) {
         clock.addOffset(seconds)
         scheduler?.tick()
+        healthReminder?.tick()
     }
 
     func resetClock() {
         clock.reset()
         scheduler?.tick()
+        healthReminder?.tick()
     }
 
     func repairLoginItem() {

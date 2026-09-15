@@ -5,6 +5,7 @@ import DakaCore
 @MainActor
 final class HealthReminderController {
     var onSpeak: ((String) -> Void)?
+    var onTick: (() -> Void)?
 
     private let clock: DakaClock
     private let healthStore: HealthStore
@@ -86,5 +87,7 @@ final class HealthReminderController {
         }
 
         if let speech { onSpeak?(speech) }
+
+        onTick?()
     }
 }
