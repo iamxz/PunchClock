@@ -302,6 +302,11 @@ final class AppModel: ObservableObject {
     func updateEveningStart(_ hhmm: String) { updateSettings { $0.eveningWindowStart = hhmm } }
     func updateEveningDeadline(_ hhmm: String) { updateSettings { $0.eveningDeadline = hhmm } }
 
+    func setReminderIntervalMinutes(_ minutes: Int) {
+        let clamped = min(60, max(1, minutes))
+        updateSettings { $0.reminderIntervalSeconds = TimeInterval(clamped * 60) }
+    }
+
     private func updateSettings(_ mutate: (inout DakaCore.Settings) -> Void) {
         errorMessage = nil
         var s = store.data.settings

@@ -29,7 +29,7 @@ final class OverlayWindow: NSWindow {
 
 @MainActor
 final class ReminderController: @preconcurrency ReminderPresenting {
-    private let reassertInterval: TimeInterval
+    private var reassertInterval: TimeInterval
     private let overlayModel = OverlayModel()
     private var windows: [OverlayWindow] = []
     private var builtFrames: [CGRect] = []
@@ -46,6 +46,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         overlayModel.tasks = tasks
         overlayModel.settings = settings
         overlayModel.now = now
+        reassertInterval = settings.effectiveReminderIntervalSeconds
         rebuildWindowsIfNeeded()
         for w in windows { w.makeKeyAndOrderFront(nil) }
         NSApp.activate(ignoringOtherApps: true)
@@ -56,6 +57,12 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     func refresh(settings: DakaCore.Settings, now: Date) {
         overlayModel.settings = settings
         overlayModel.now = now
+        let desired = settings.effectiveReminderIntervalSeconds
+        if desired != reassertInterval {
+            reassertInterval = desired
+            stopReassertTimer()
+            startReassertTimer()
+        }
         rebuildWindowsIfNeeded()
     }
 

@@ -36,6 +36,17 @@ struct ScheduleSettingsView: View {
                 DatePicker("下班窗口截止", selection: bound(\.eveningDeadline, model.updateEveningDeadline),
                            displayedComponents: .hourAndMinute)
             }
+
+            Section("重复提醒") {
+                Stepper(value: Binding(get: { Int(model.settings.reminderIntervalSeconds / 60) },
+                                       set: { model.setReminderIntervalMinutes($0) }),
+                        in: 1...60) {
+                    Text("每隔 \(Int(model.settings.reminderIntervalSeconds / 60)) 分钟重复提醒")
+                }
+                Text("进入打卡窗口即全屏提醒，完成对应打卡后停止。窗口截止时间仅用于统计缺卡。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }
