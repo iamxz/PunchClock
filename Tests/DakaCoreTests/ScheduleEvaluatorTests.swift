@@ -64,6 +64,25 @@ final class ScheduleEvaluatorTests: XCTestCase {
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 23, 0), record: record), [])
     }
 
+    func testEveningUnderMinimumKeepsReminding() {
+        var settings = Settings.default
+        settings.minWorkDurationHours = 8
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 16, 0)])
+        let now = TestTime.date(2026, 9, 14, 18, 30)
+        XCTAssertEqual(reminders(now, settings: settings, record: record),
+                       [PendingReminder(task: .evening, level: .hard)])
+    }
+
+    func testEveningAtMinimumClears() {
+        var settings = Settings.default
+        settings.minWorkDurationHours = 8
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 18, 0)])
+        let now = TestTime.date(2026, 9, 14, 18, 30)
+        XCTAssertEqual(reminders(now, settings: settings, record: record), [])
+    }
+
     func testWeekendNoReminders() {
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 19, 10, 0)), [])
     }

@@ -9,12 +9,14 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.eveningWindowStart, "18:00")
         XCTAssertEqual(s.eveningDeadline, "18:30")
         XCTAssertEqual(s.reminderIntervalSeconds, 120)
+        XCTAssertEqual(s.minWorkDurationHours, 8)
     }
 
     func testRoundTrip() throws {
         var s = Settings.default
         s.morningDeadline = "09:45"
         s.enabled = false
+        s.minWorkDurationHours = 7.5
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
         XCTAssertEqual(decoded, s)
@@ -37,6 +39,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(decoded.eveningWindowStart, "18:00")
         XCTAssertEqual(decoded.eveningDeadline, "18:30")
         XCTAssertEqual(decoded.reminderIntervalSeconds, 60)
+        XCTAssertEqual(decoded.minWorkDurationHours, 8)
     }
 
     func testPartialJSONUsesDefaultsForMissing() throws {

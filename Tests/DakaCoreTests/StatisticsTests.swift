@@ -10,8 +10,10 @@ final class StatisticsTests: XCTestCase {
         for (day, morning, evening, mat, eat, skipped) in items {
             let key = DakaDate.key(for: day, calendar: cal)
             var r = DayRecord()
-            r.morningPunches = morning ? [mat ?? Date(timeIntervalSince1970: 0)] : []
-            r.eveningPunches = evening ? [eat ?? Date(timeIntervalSince1970: 0)] : []
+            let defaultMorning = DakaDate.date(on: day, at: "09:00", calendar: cal) ?? day
+            let defaultEvening = DakaDate.date(on: day, at: "18:00", calendar: cal) ?? day
+            r.morningPunches = morning ? [mat ?? defaultMorning] : []
+            r.eveningPunches = evening ? [eat ?? defaultEvening] : []
             r.skipped = skipped
             result[key] = r
         }
@@ -38,6 +40,16 @@ final class StatisticsTests: XCTestCase {
         XCTAssertEqual(stat(s, "2026-09-14")?.workDuration, 33000)
         XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 32100)
         XCTAssertEqual(s.averageWorkDuration ?? 0, 32550, accuracy: 0.5)
+    }
+
+    func testEveningUnderMinimumDoesNotComplete() {
+        let recs = records([
+            (TestTime.date(2026, 9, 15), true, true,
+             TestTime.date(2026, 9, 15, 9, 0), TestTime.date(2026, 9, 15, 16, 0), false)
+        ])
+        let s = Statistics.compute(records: recs, settings: .default, now: now, rangeDays: 7, calendar: cal)
+        XCTAssertEqual(stat(s, "2026-09-15")?.completedBoth, false)
+        XCTAssertNil(stat(s, "2026-09-15")?.workDuration)
     }
 
     func testEveningBeforeMorningYieldsNilDuration() {

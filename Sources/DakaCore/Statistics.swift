@@ -60,6 +60,11 @@ public enum Statistics {
                                calendar: Calendar = .current) -> StatisticsSummary {
         let range = max(1, rangeDays)
         let eveningDeadlineToday = DakaDate.date(on: now, at: settings.eveningDeadline, calendar: calendar)
+        let minWork = settings.minWorkDuration
+
+        func completed(_ record: DayRecord) -> Bool {
+            record.morningDone && PunchRules.isEveningComplete(record, minWorkDuration: minWork)
+        }
 
         var days: [DailyStat] = []
         var durations: [TimeInterval] = []
@@ -72,10 +77,11 @@ public enum Statistics {
             let record = records[key] ?? DayRecord()
             let weekday = DakaDate.weekday(of: day, calendar: calendar)
             let isWorkday = settings.workdays.contains(weekday)
-            let completedBoth = record.morningDone && record.eveningDone
+            let completedBoth = completed(record)
+            let effectiveEvening = PunchRules.effectiveEveningPunch(record, minWorkDuration: minWork)
 
             var duration: TimeInterval?
-            if let morning = record.morningDoneAt, let evening = record.eveningDoneAt, evening >= morning {
+            if let morning = record.morningDoneAt, let evening = effectiveEvening, evening >= morning {
                 duration = evening.timeIntervalSince(morning)
             }
             if let duration { durations.append(duration) }
@@ -83,7 +89,7 @@ public enum Statistics {
             days.append(DailyStat(dateKey: key, weekday: weekday, isWorkday: isWorkday,
                                   completedBoth: completedBoth, skipped: record.skipped,
                                   morningDoneAt: record.morningDoneAt,
-                                  eveningDoneAt: record.eveningDoneAt,
+                                  eveningDoneAt: effectiveEvening,
                                   workDuration: duration))
 
             if isWorkday && !record.skipped && !completedBoth {
@@ -99,7 +105,7 @@ public enum Statistics {
                 let key = DakaDate.key(for: day, calendar: calendar)
                 let record = records[key] ?? DayRecord()
                 let isWorkday = settings.workdays.contains(DakaDate.weekday(of: day, calendar: calendar))
-                if isWorkday && record.morningDone && record.eveningDone {
+                if isWorkday && completed(record) {
                     monthPunch += 1
                 }
                 guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -111,7 +117,7 @@ public enum Statistics {
 
         let todayKey = DakaDate.key(for: now, calendar: calendar)
         let todayRecord = records[todayKey] ?? DayRecord()
-        let todayCompleted = todayRecord.morningDone && todayRecord.eveningDone
+        let todayCompleted = completed(todayRecord)
         let todayIsWorkday = settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar))
         let todayInProgress = todayIsWorkday && !todayRecord.skipped && !todayCompleted
             && (eveningDeadlineToday.map { now < $0 } ?? true)
@@ -126,7 +132,7 @@ public enum Statistics {
             let record = records[key] ?? DayRecord()
             let isWorkday = settings.workdays.contains(DakaDate.weekday(of: cursor, calendar: calendar))
             if isWorkday && !record.skipped {
-                if record.morningDone && record.eveningDone {
+                if completed(record) {
                     streak += 1
                 } else {
                     break

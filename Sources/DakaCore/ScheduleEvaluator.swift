@@ -22,7 +22,7 @@ public struct ScheduleEvaluator {
         if let level = level(now: now,
                              start: settings.eveningWindowStart,
                              deadline: settings.eveningDeadline,
-                             done: record.eveningDone,
+                             done: PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration),
                              calendar: calendar) {
             reminders.append(PendingReminder(task: .evening, level: level))
         }

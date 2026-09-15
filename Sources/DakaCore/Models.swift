@@ -47,6 +47,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public var eveningWindowStart: String
     public var eveningDeadline: String
     public var reminderIntervalSeconds: TimeInterval
+    public var minWorkDurationHours: Double
 
     public init(enabled: Bool = true,
                 workdays: Set<Int> = [2, 3, 4, 5, 6],
@@ -54,7 +55,8 @@ public struct Settings: Codable, Equatable, Sendable {
                 morningDeadline: String = "09:30",
                 eveningWindowStart: String = "18:00",
                 eveningDeadline: String = "18:30",
-                reminderIntervalSeconds: TimeInterval = 120) {
+                reminderIntervalSeconds: TimeInterval = 120,
+                minWorkDurationHours: Double = 8) {
         self.enabled = enabled
         self.workdays = workdays
         self.morningWindowStart = morningWindowStart
@@ -62,12 +64,15 @@ public struct Settings: Codable, Equatable, Sendable {
         self.eveningWindowStart = eveningWindowStart
         self.eveningDeadline = eveningDeadline
         self.reminderIntervalSeconds = reminderIntervalSeconds
+        self.minWorkDurationHours = minWorkDurationHours
     }
 
     /// 提醒间隔下限 30 秒，避免异常配置导致每秒刷屏。
     public var effectiveReminderIntervalSeconds: TimeInterval {
         max(30, reminderIntervalSeconds)
     }
+
+    public var minWorkDuration: TimeInterval { max(0, minWorkDurationHours) * 3600 }
 
     public static let `default` = Settings()
 
@@ -76,6 +81,7 @@ public struct Settings: Codable, Equatable, Sendable {
         case morningWindowStart, morningDeadline
         case eveningWindowStart, eveningDeadline
         case reminderIntervalSeconds
+        case minWorkDurationHours
     }
 
     public init(from decoder: Decoder) throws {
@@ -88,6 +94,7 @@ public struct Settings: Codable, Equatable, Sendable {
         self.eveningWindowStart = try c.decodeIfPresent(String.self, forKey: .eveningWindowStart) ?? d.eveningWindowStart
         self.eveningDeadline = try c.decodeIfPresent(String.self, forKey: .eveningDeadline) ?? d.eveningDeadline
         self.reminderIntervalSeconds = try c.decodeIfPresent(TimeInterval.self, forKey: .reminderIntervalSeconds) ?? d.reminderIntervalSeconds
+        self.minWorkDurationHours = try c.decodeIfPresent(Double.self, forKey: .minWorkDurationHours) ?? d.minWorkDurationHours
     }
 }
 
