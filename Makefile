@@ -33,6 +33,18 @@ assemble:
 	codesign --force --sign - "$(APP_BUNDLE)"
 	@echo "Built $(APP_BUNDLE)"
 
+pkg:
+	$(MAKE) assemble ARCHS="$(UNIVERSAL)"
+	rm -rf $(PKG_ROOT)
+	mkdir -p $(PKG_ROOT)/Applications
+	ditto $(APP_BUNDLE) $(PKG_ROOT)/Applications/$(APP_NAME).app
+	pkgbuild --root $(PKG_ROOT) \
+	         --identifier $(BUNDLE_ID) \
+	         --version $(PKG_VERSION) \
+	         --install-location / \
+	         $(PKG_OUT)
+	@echo "Built $(PKG_OUT)"
+
 install: app
 	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app.tmp"
 	ditto "$(APP_BUNDLE)" "$(INSTALL_DIR)/$(APP_NAME).app.tmp"
