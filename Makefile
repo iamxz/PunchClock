@@ -34,15 +34,16 @@ assemble:
 	@echo "Built $(APP_BUNDLE)"
 
 pkg:
+	test -n "$(PKG_VERSION)"
 	$(MAKE) assemble ARCHS="$(UNIVERSAL)"
-	rm -rf $(PKG_ROOT)
-	mkdir -p $(PKG_ROOT)/Applications
-	ditto $(APP_BUNDLE) $(PKG_ROOT)/Applications/$(APP_NAME).app
-	pkgbuild --root $(PKG_ROOT) \
-	         --identifier $(BUNDLE_ID) \
-	         --version $(PKG_VERSION) \
+	rm -rf "$(PKG_ROOT)"
+	mkdir -p "$(PKG_ROOT)/Applications"
+	ditto "$(APP_BUNDLE)" "$(PKG_ROOT)/Applications/$(APP_NAME).app"
+	pkgbuild --root "$(PKG_ROOT)" \
+	         --identifier "$(BUNDLE_ID)" \
+	         --version "$(PKG_VERSION)" \
 	         --install-location / \
-	         $(PKG_OUT)
+	         "$(PKG_OUT)"
 	@echo "Built $(PKG_OUT)"
 
 install: app
