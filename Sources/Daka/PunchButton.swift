@@ -54,7 +54,7 @@ struct PunchButton: View {
             TimelineView(.everyMinute) { _ in
                 ring
             }
-            Text("长按 3 秒打卡（可重复）")
+            Text("长按 3 秒打卡")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -70,9 +70,15 @@ struct PunchButton: View {
                 .trim(from: 0, to: ringFraction)
                 .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text(centerText)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(tint)
+            VStack(spacing: 2) {
+                ForEach(Array(centerLines.enumerated()), id: \.offset) { index, line in
+                    Text(line)
+                        .font(.system(size: index == 0 ? 15 : 12,
+                                      weight: index == 0 ? .semibold : .regular))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(tint)
         }
         .frame(width: 108, height: 108)
         .contentShape(Circle())
@@ -104,11 +110,24 @@ struct PunchButton: View {
         return task == .morning ? .green : .blue
     }
 
-    private var centerText: String {
-        if isPressing { return task.title }
-        guard let elapsed = WorkProgress.elapsed(record, now: nowProvider(), minWorkDuration: minWorkDuration) else {
-            return task.title
+    private var centerLines: [String] {
+        if isPressing { return [task.title] }
+
+        var lines: [String] = []
+        if let punch = PunchRules.latestPunch(record, task: task) {
+            lines.append(Self.timeFormatter.string(from: punch))
+        } else {
+            lines.append(task.title)
         }
-        return WorkProgress.hoursText(elapsed)
+        if let elapsed = WorkProgress.elapsed(record, now: nowProvider(), minWorkDuration: minWorkDuration) {
+            lines.append(WorkProgress.hoursText(elapsed))
+        }
+        return lines
     }
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 }
