@@ -36,9 +36,9 @@ Tests/DakaCoreTests/PetMoodTests.swift
 - `Sources/Daka/AppDelegate.swift`：删除 `petWindow` 属性、`PetWindowController` 创建与 `pet.show()`。
 - `Sources/Daka/AppModel.swift`：删除 `petSpeech`、`petVisible`、`petWindow`、`speechClearTimer`、`say()`、`setPetVisible()`；`drinkWater()` / `standUp()` 保留记录逻辑与 `healthReminder.tick()`，去掉 `say()` 反馈；`healthReminder.onSpeak` 接线改为 `onHealthAlerts`（见 §4）。
 - `Sources/Daka/ControlCenterView.swift`：删除 `PetToolbarToggle` 及 `.toolbar` 中该项。
-- `Sources/Daka/PunchButton.swift`：删除无引用后剩余的（若有）ToolPanelView 相关说明；实际 `ToolPanelView` 删除后，`MenuBarView` 仍是 `PunchButton` 的调用点。
+- `ToolPanelView` 删除后，`PunchButton` 仅剩 `MenuBarView` 一个调用点，无需改动 `PunchButton`。
 
-`ps.visible` / `pet.frame` 等 UserDefaults 键遗留无害，不做迁移。
+`pet.visible` / `pet.frame` 等 UserDefaults 键遗留无害，不做迁移。
 
 ## 4. 健康提醒全屏化
 
@@ -110,7 +110,7 @@ struct HealthAlert: Identifiable, Equatable {
 
 - **ESC 暂停**（`snooze()`）：
   - 暂停时长：`currentTasks` 非空 → `reassertInterval`；否则取 `currentHealthAlerts.repeatIntervalSeconds` 的最小值。
-  - 暂停期间置 `isSnoozed`：`updateHealth` / `refresh` 只更新数据不置前窗口；`showHard`（打卡状态变化）沿用现状——取消暂停并重新弹出。
+  - 暂停期间置 `isSnoozed`：`updateHealth` / `refresh` 只更新数据不置前窗口；打卡状态变化 `showHard` 会取消暂停并重新弹出（清 `isSnoozed`、结束 snooze 定时器，沿用现状）。
   - `resume()` 恢复 `isSnoozed = false` 并重新 `syncOverlay()`。
 
 - `showMessage`（打卡反馈）沿用，不随 `syncOverlay` 重构而改变。
@@ -119,7 +119,7 @@ struct HealthAlert: Identifiable, Equatable {
 
 - 全屏期间喝茶/起身记录失败：沿用 `AppModel.errorMessage`，遮罩保持，下次节流重新出现。
 - 无任何提醒时不显示遮罩、不启动重复置前定时器。
-- 喝水后喝水到期立即消失（`updateHealth([])`），若打卡待办仍在则遮罩退化为仅打卡内容（工厂：不闪断）。
+- 喝水后喝水到期立即消失（`updateHealth([])`），若打卡待办仍在则遮罩退化为仅打卡内容（不闪断）。
 - `updateHealth` 在暂停期内到来：缓存数据，不提前弹出。
 
 ## 6. 范围说明
