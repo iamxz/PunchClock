@@ -14,4 +14,12 @@ public enum PunchRules {
                                          minWorkDuration: TimeInterval) -> Bool {
         effectiveEveningPunch(record, minWorkDuration: minWorkDuration) != nil
     }
+
+    /// 指定任务的最近一次打卡；无打卡时 nil。
+    public static func latestPunch(_ record: DayRecord, task: PunchTask) -> Date? {
+        switch task {
+        case .morning: return record.morningPunches.max()
+        case .evening: return record.eveningPunches.max()
+        }
+    }
 }
