@@ -39,7 +39,7 @@ struct MenuBarView: View {
             }
         }
         .padding(16)
-        .frame(width: 180)
+        .frame(width: 200)
     }
 
     private var scheduleInactive: Bool {
@@ -50,24 +50,26 @@ struct MenuBarView: View {
 
     private func statusRow(_ task: PunchTask, done: Bool, count: Int, deadline: String) -> some View {
         let suffix = count > 1 ? "（\(count) 次）" : ""
+        let status: (text: String, color: Color) = {
+            if done { return ("已完成\(suffix)", .secondary) }
+            if scheduleInactive { return ("今日不提醒", .secondary) }
+            if model.reminderState.contains(task) {
+                if let due = DakaDate.date(on: model.now, at: deadline), model.now >= due {
+                    return ("已过截止\(suffix)", .red)
+                }
+                return ("窗口内\(suffix)", .orange)
+            }
+            return ("待打卡\(suffix)", .secondary)
+        }()
         return HStack {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(done ? Color.green : Color.secondary)
             Text(task.title)
             Spacer()
-            if done {
-                Text("已完成\(suffix)").foregroundStyle(.secondary)
-            } else if scheduleInactive {
-                Text("今日不提醒").foregroundStyle(.secondary)
-            } else if model.reminderState.contains(task) {
-                if let due = DakaDate.date(on: model.now, at: deadline), model.now >= due {
-                    Text("已过截止\(suffix)").foregroundStyle(.red)
-                } else {
-                    Text("窗口内\(suffix)").foregroundStyle(.orange)
-                }
-            } else {
-                Text("待打卡\(suffix)").foregroundStyle(.secondary)
-            }
+            Text(status.text)
+                .foregroundStyle(status.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
     }
 }
