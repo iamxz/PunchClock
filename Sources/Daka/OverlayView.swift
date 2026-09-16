@@ -1,13 +1,28 @@
 import SwiftUI
 import DakaCore
 
+/// 健康提醒内容（在全屏强提示里展示）。
+struct HealthAlert: Identifiable, Equatable {
+    enum Kind: Equatable { case water, movement }
+
+    let kind: Kind
+    let title: String
+    let body: String
+    let repeatIntervalSeconds: TimeInterval
+
+    var id: Int { kind == .water ? 0 : 1 }
+}
+
 @MainActor
 final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []
     @Published var settings: DakaCore.Settings = .default
     @Published var now: Date = Date()
     @Published var message: String?
+    @Published var healthAlerts: [HealthAlert] = []
     var onPunch: (PunchTask) -> Void = { _ in }
+    var onWater: () -> Void = {}
+    var onMovement: () -> Void = {}
 }
 
 struct OverlayView: View {
@@ -52,6 +67,31 @@ struct OverlayView: View {
                         }
                     }
                 }
+                ForEach(model.healthAlerts) { alert in
+                    VStack(spacing: 10) {
+                        Label(alert.title,
+                              systemImage: alert.kind == .water ? "drop.fill" : "figure.walk")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(.white)
+                        Text(alert.body)
+                            .font(.system(size: 20))
+                            .foregroundStyle(.yellow)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 560)
+                        Button {
+                            if alert.kind == .water { model.onWater() } else { model.onMovement() }
+                        } label: {
+                            Text(alert.kind == .water ? "已喝水" : "已起身")
+                                .font(.system(size: 22, weight: .semibold))
+                                .frame(width: 240, height: 56)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(alert.kind == .water ? .blue : .green)
+                    }
+                }
+                Text("ESC 可暂停，过提醒间隔后重新弹出")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.gray)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -61,7 +101,7 @@ struct OverlayView: View {
         switch model.tasks {
         case [.morning]: return "该上班打卡了"
         case [.evening]: return "该下班打卡了"
-        case []: return "打卡完成"
+        case []: return model.healthAlerts.isEmpty ? "打卡完成" : "健康提醒"
         default: return "还有打卡未完成"
         }
     }

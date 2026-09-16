@@ -83,6 +83,8 @@ final class AppModel: ObservableObject {
         let reminder = ReminderController(interval: settings.effectiveReminderIntervalSeconds) { [weak self] task in
             self?.punch(task)
         }
+        reminder.setWaterAction { [weak self] in self?.drinkWater() }
+        reminder.setMovementAction { [weak self] in self?.standUp() }
         self.reminder = reminder
 
         let scheduler = Scheduler(clock: clock, store: store, presenter: reminder,
