@@ -24,10 +24,6 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var healthSettings: HealthSettings
     @Published private(set) var healthRecord: DayHealthRecord
-    @Published var petSpeech: String?
-
-    @Published var petVisible: Bool
-    weak var petWindow: PetWindowController?
 
     weak var mainWindow: MainWindowController?
 
@@ -52,7 +48,6 @@ final class AppModel: ObservableObject {
     private var reminder: ReminderController?
     private let healthStore: HealthStore
     private var healthReminder: HealthReminderController?
-    private var speechClearTimer: Timer?
 
     init(clock: AdjustableClock = AdjustableClock(),
          store: PunchStore? = nil,
@@ -66,7 +61,6 @@ final class AppModel: ObservableObject {
         self.record = resolvedStore.record(for: clock.now)
         self.healthSettings = resolvedHealth.data.settings
         self.healthRecord = resolvedHealth.record(for: clock.now)
-        self.petVisible = UserDefaults.standard.object(forKey: "pet.visible") as? Bool ?? true
     }
 
     func start() {
@@ -104,7 +98,6 @@ final class AppModel: ObservableObject {
         let healthReminder = HealthReminderController(clock: clock,
                                                       healthStore: healthStore,
                                                       scheduleStore: store)
-        healthReminder.onSpeak = { [weak self] text in self?.say(text) }
         healthReminder.onTick = { [weak self] in self?.refreshHealth() }
         self.healthReminder = healthReminder
         healthReminder.start()
@@ -170,17 +163,11 @@ final class AppModel: ObservableObject {
     }
 
     func drinkWater() {
-        do {
-            try logHealth(.water)
-            say("咕嘟咕嘟，+1 杯！")
-        } catch {}
+        do { try logHealth(.water) } catch {}
     }
 
     func standUp() {
-        do {
-            try logHealth(.movement)
-            say("走一走真舒服～")
-        } catch {}
+        do { try logHealth(.movement) } catch {}
     }
 
     private func logHealth(_ kind: HealthLogKind) throws {
@@ -222,20 +209,6 @@ final class AppModel: ObservableObject {
     func setMovementEnabled(_ on: Bool) { updateHealthSettings { $0.movementEnabled = on } }
     func setMovementGoalCount(_ n: Int) { updateHealthSettings { $0.movementGoalCount = max(1, n) } }
     func setMovementIntervalMinutes(_ n: Int) { updateHealthSettings { $0.movementIntervalMinutes = max(15, n) } }
-
-    func say(_ text: String) {
-        petSpeech = text
-        petWindow?.showSpeech(text)
-        speechClearTimer?.invalidate()
-        let t = Timer(timeInterval: 6, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.petSpeech = nil
-                self?.petWindow?.hideSpeech()
-            }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        speechClearTimer = t
-    }
 
     func punch(_ task: PunchTask) {
         errorMessage = nil
@@ -344,12 +317,6 @@ final class AppModel: ObservableObject {
     func openControlCenter(selecting id: ToolID? = nil) {
         if let id { selectedSidebar = .tool(id) }
         mainWindow?.show()
-    }
-
-    func setPetVisible(_ visible: Bool) {
-        petVisible = visible
-        UserDefaults.standard.set(visible, forKey: "pet.visible")
-        if visible { petWindow?.show() } else { petWindow?.hide() }
     }
 
     func statistics(rangeDays: Int) -> StatisticsSummary {

@@ -30,11 +30,6 @@ struct ControlCenterView: View {
                 .padding(20)
         }
         .frame(minWidth: 720, minHeight: 520)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                PetToolbarToggle(model: model)
-            }
-        }
     }
 
     private func summary(for id: ToolID) -> String {
@@ -73,19 +68,5 @@ struct ControlCenterView: View {
         case .settings(.system):
             SystemSettingsView(model: model)
         }
-    }
-}
-
-private struct PetToolbarToggle: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Button {
-            model.setPetVisible(!model.petVisible)
-        } label: {
-            Image(systemName: model.petVisible ? "pawprint.fill" : "pawprint")
-        }
-        .help(model.petVisible ? "隐藏桌宠" : "显示桌宠")
-        .accessibilityLabel(model.petVisible ? "隐藏桌宠" : "显示桌宠")
     }
 }
