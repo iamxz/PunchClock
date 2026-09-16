@@ -165,3 +165,13 @@
 - [ ] 健康全屏提示保持显示时，「当前时间」每秒刷新、健康正文随 30 秒 tick 更新，但不会因单纯时间流逝再度抢焦点。
 - [ ] 系统不再发送喝水/走动本地通知（已删除通知权限请求）。
 - [ ] 打卡全部既有行为无回归（强提醒、ESC 暂停、重复间隔、最少工时、休假、定点启动）。
+
+## v18：PKG 独立安装包
+
+- [ ] `make pkg` 产出 `build/Daka-1.0.pkg`，无报错。
+- [ ] `lipo -archs build/Daka.app/Contents/MacOS/Daka` 输出 `arm64 x86_64`（Intel 与 Apple Silicon 都可装）。
+- [ ] `pkgutil --payload-files build/Daka-1.0.pkg` 列出 `Applications/Daka.app/...`。
+- [ ] 双击 pkg 走完安装向导，`/Applications/Daka.app` 为本次构建；从 `/Applications` 启动后 Dock + 菜单栏 + 主窗口正常。
+- [ ] 从 `/Applications` 运行时「定点拉起」生效（应用要求路径以 `/Applications/` 开头）。
+- [ ] `make app` 仍只编本机架构（未回归）。
+- [ ] `make install` 仍正常安装并启动。
