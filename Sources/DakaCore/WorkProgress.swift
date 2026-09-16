@@ -22,4 +22,13 @@ public enum WorkProgress {
         guard minWorkDuration > 0 else { return 1 }
         return min(1, elapsed / minWorkDuration)
     }
+
+    /// 显示文案：`4h` / `4.5h` / `45m`；负值按 `0m`。
+    public static func hoursText(_ interval: TimeInterval) -> String {
+        let totalMinutes = Int((max(0, interval) / 60).rounded(.down))
+        if totalMinutes < 60 { return "\(totalMinutes)m" }
+        let hours = Double(totalMinutes) / 60
+        if hours == hours.rounded() { return "\(Int(hours))h" }
+        return String(format: "%.1fh", hours)
+    }
 }

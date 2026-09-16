@@ -48,4 +48,20 @@ final class WorkProgressTests: XCTestCase {
         let now = TestTime.date(2026, 9, 14, 9, 30)
         XCTAssertEqual(WorkProgress.fraction(record, now: now, minWorkDuration: 0), 1)
     }
+
+    func testHoursTextUnderOneHourShowsMinutes() {
+        XCTAssertEqual(WorkProgress.hoursText(45 * 60), "45m")
+    }
+
+    func testHoursTextWholeHours() {
+        XCTAssertEqual(WorkProgress.hoursText(4 * 3600), "4h")
+    }
+
+    func testHoursTextHalfHour() {
+        XCTAssertEqual(WorkProgress.hoursText(4.5 * 3600), "4.5h")
+    }
+
+    func testHoursTextNegativeIsZero() {
+        XCTAssertEqual(WorkProgress.hoursText(-60), "0m")
+    }
 }
