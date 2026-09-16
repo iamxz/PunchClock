@@ -223,7 +223,7 @@ struct PunchButton: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            TimelineView(.periodic(from: .now, by: 60)) { _ in
+            TimelineView(.everyMinute) { _ in
                 ring
             }
             Text("长按 3 秒打卡（可重复）")
