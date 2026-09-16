@@ -17,7 +17,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
                                    styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                    backing: .buffered,
                                    defer: false)
-            created.title = "Daka"
+            created.title = "打工人爱护自己"
             created.isReleasedWhenClosed = false
             created.contentViewController = NSHostingController(rootView: ControlCenterView(model: model))
             created.setContentSize(NSSize(width: 860, height: 600))

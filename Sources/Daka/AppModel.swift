@@ -365,7 +365,7 @@ final class AppModel: ObservableObject {
 
     func confirmQuit() {
         let alert = NSAlert()
-        alert.messageText = "退出 Daka？"
+        alert.messageText = "退出 打工人爱护自己？"
         alert.informativeText = "退出后将无法提醒打卡，直到下次开机或手动启动。"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "取消")

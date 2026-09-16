@@ -32,7 +32,7 @@ struct PetView: View {
             Button(model.petVisible ? "隐藏桌宠" : "显示桌宠") { model.setPetVisible(!model.petVisible) }
         }
         .onAppear { animate = true }
-        .help("点击打开 Daka 工具面板")
+        .help("点击打开 打工人爱护自己 工具面板")
     }
 
     /// 吹泡泡那种透明玻泡：淡渐变填充 + 反光边 + 高光。
