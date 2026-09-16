@@ -42,36 +42,18 @@ final class PunchPressModel: ObservableObject {
 
 struct PunchButton: View {
     let task: PunchTask
+    let record: DayRecord
+    let nowProvider: () -> Date
+    let minWorkDuration: TimeInterval
     let onComplete: (PunchTask) -> Void
 
     @StateObject private var press = PunchPressModel()
 
     var body: some View {
         VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .stroke(Color.secondary.opacity(0.2), lineWidth: 8)
-                Circle()
-                    .trim(from: 0, to: press.progress)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text(task.title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(tint)
+            TimelineView(.periodic(from: .now, by: 60)) { _ in
+                ring
             }
-            .frame(width: 108, height: 108)
-            .contentShape(Circle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in press.start { onComplete(task) } }
-                    .onEnded { _ in press.cancel() }
-            )
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(task.title))
-            .accessibilityHint(Text("长按 3 秒完成打卡；旁白可直接操作"))
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction(named: Text("完成打卡")) { onComplete(task) }
-
             Text("长按 3 秒打卡（可重复）")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -80,7 +62,53 @@ struct PunchButton: View {
         .onChange(of: task) { _, _ in press.cancel() }
     }
 
+    private var ring: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 8)
+            Circle()
+                .trim(from: 0, to: ringFraction)
+                .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text(centerText)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint)
+        }
+        .frame(width: 108, height: 108)
+        .contentShape(Circle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in press.start { onComplete(task) } }
+                .onEnded { _ in press.cancel() }
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(task.title))
+        .accessibilityHint(Text("长按 3 秒完成打卡；旁白可直接操作"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: Text("完成打卡")) { onComplete(task) }
+    }
+
+    private var isPressing: Bool { press.progress > 0 }
+
+    private var isEveningComplete: Bool {
+        PunchRules.isEveningComplete(record, minWorkDuration: minWorkDuration)
+    }
+
+    private var ringFraction: CGFloat {
+        if isPressing { return press.progress }
+        return CGFloat(WorkProgress.fraction(record, now: nowProvider(), minWorkDuration: minWorkDuration))
+    }
+
     private var tint: Color {
-        task == .morning ? .green : .blue
+        if isEveningComplete && !isPressing { return .green }
+        return task == .morning ? .green : .blue
+    }
+
+    private var centerText: String {
+        if isPressing { return task.title }
+        guard let elapsed = WorkProgress.elapsed(record, now: nowProvider(), minWorkDuration: minWorkDuration) else {
+            return task.title
+        }
+        return WorkProgress.hoursText(elapsed)
     }
 }
