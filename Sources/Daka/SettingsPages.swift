@@ -131,13 +131,6 @@ struct SystemSettingsView: View {
                 Button("退出应用") { model.confirmQuit() }
             }
 
-            Section("调试") {
-                HStack {
-                    Button("+10 分钟") { model.debugAdvanceClock(by: 600) }
-                    Button("重置时间") { model.resetClock() }
-                }
-            }
-
             if model.hasSettingsFeedback {
                 Section {
                     SettingsFeedbackView(model: model)

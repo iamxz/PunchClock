@@ -336,18 +336,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func debugAdvanceClock(by seconds: TimeInterval) {
-        clock.addOffset(seconds)
-        scheduler?.tick()
-        healthReminder?.tick()
-    }
-
-    func resetClock() {
-        clock.reset()
-        scheduler?.tick()
-        healthReminder?.tick()
-    }
-
     func repairLoginItem() {
         errorMessage = LoginItemManager.registerIfNeeded()
         objectWillChange.send()
