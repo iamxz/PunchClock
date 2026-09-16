@@ -131,7 +131,7 @@ Sources/
     ReminderController.swift / OverlayView.swift
     PetView.swift / PetWindowController.swift / PetSpeechBubble.swift / ToolPanelView.swift
     HealthReminderController.swift / HealthToolViews.swift
-    ComingSoonView.swift / GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
+    GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
 Resources/             # Info.plist、Daka.icns 应用图标、状态栏图标
 scripts/               # 图标生成脚本（make-appicon.swift 等）

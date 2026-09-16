@@ -4,3 +4,4 @@ build/
 Resources/AppIcon.iconset/
 .DS_Store
 *.xcodeproj
+.superpowers/

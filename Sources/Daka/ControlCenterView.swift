@@ -47,8 +47,6 @@ struct ControlCenterView: View {
             return "今日 \(model.healthStatus.cups)/\(model.healthSettings.waterGoalCups) 杯"
         case .sedentary:
             return "已起身 \(model.healthStatus.stands) 次"
-        case .eye:
-            return "即将推出"
         }
     }
 
@@ -66,8 +64,6 @@ struct ControlCenterView: View {
             WaterToolView(model: model)
         case .tool(.sedentary):
             MovementToolView(model: model)
-        case .tool(.eye):
-            ComingSoonView(metadata: ToolCatalog.metadata(for: .eye))
         case .settings(.schedule):
             ScheduleSettingsView(model: model)
         case .settings(.workdays):

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum ToolID: String, CaseIterable, Identifiable, Sendable {
-    case punch, water, eye, sedentary
+    case punch, water, sedentary
     public var id: String { rawValue }
 }
 
@@ -21,7 +21,6 @@ public enum ToolCatalog {
     public static let all: [ToolMetadata] = [
         ToolMetadata(id: .punch, title: "打卡统计", symbol: "checkmark.seal"),
         ToolMetadata(id: .water, title: "喝水", symbol: "drop"),
-        ToolMetadata(id: .eye, title: "护眼", symbol: "eye"),
         ToolMetadata(id: .sedentary, title: "久坐", symbol: "figure.walk")
     ]
 
