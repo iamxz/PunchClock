@@ -107,6 +107,11 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         !currentTasks.isEmpty || !currentHealthAlerts.isEmpty
     }
 
+    private var effectiveReassertInterval: TimeInterval {
+        if !currentTasks.isEmpty { return reassertInterval }
+        return currentHealthAlerts.map(\.repeatIntervalSeconds).min() ?? reassertInterval
+    }
+
     private func syncOverlay() {
         guard !isSnoozed else { return }
         if hasContent {
@@ -116,6 +121,9 @@ final class ReminderController: @preconcurrency ReminderPresenting {
             startReassertTimer()
         } else {
             stopReassertTimer()
+            snoozeTimer?.invalidate()
+            snoozeTimer = nil
+            isSnoozed = false
             for w in windows { w.orderOut(nil) }
         }
     }
@@ -151,8 +159,11 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     }
 
     private func startReassertTimer() {
-        guard reassertTimer == nil, !isSnoozed else { return }
-        let t = Timer(timeInterval: reassertInterval, repeats: true) { [weak self] _ in
+        guard !isSnoozed else { return }
+        let desired = effectiveReassertInterval
+        if let reassertTimer, reassertTimer.timeInterval == desired { return }
+        reassertTimer?.invalidate()
+        let t = Timer(timeInterval: desired, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, !self.isSnoozed, self.hasContent else { return }
                 for w in self.windows { w.makeKeyAndOrderFront(nil) }
@@ -177,8 +188,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     }
 
     private func snoozeInterval() -> TimeInterval {
-        if !currentTasks.isEmpty { return reassertInterval }
-        return currentHealthAlerts.map(\.repeatIntervalSeconds).min() ?? reassertInterval
+        effectiveReassertInterval
     }
 
     private func scheduleSnooze() {
@@ -194,7 +204,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         overlayModel.message = text
     }
 
-    func resume() {
+    private func resume() {
         snoozeTimer?.invalidate()
         snoozeTimer = nil
         isSnoozed = false
