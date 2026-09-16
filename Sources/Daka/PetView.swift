@@ -21,10 +21,10 @@ struct PetView: View {
                 .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
         }
         .frame(width: 52, height: 52)
-        .offset(y: animate ? -3 : 3)
-        .rotationEffect(.degrees(animate ? 6 : -6))
-        .scaleEffect(animate ? 1.08 : 0.94)
-        .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: animate)
+        .padding(4)
+        .rotationEffect(.degrees(animate ? 2 : -2))
+        .scaleEffect(animate ? 1.02 : 0.98)
+        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: animate)
         .contentShape(Circle())
         .onTapGesture { onOpenPanel() }
         .contextMenu {

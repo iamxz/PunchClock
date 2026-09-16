@@ -8,7 +8,7 @@ final class PetWindowController: NSObject {
     private var popover: NSPopover?
     private var bubbleWindow: NSWindow?
     private let frameKey = "pet.frame"
-    private let petSize = NSSize(width: 52, height: 52)
+    private let petSize = NSSize(width: 60, height: 60)
 
     init(model: AppModel) {
         self.model = model
@@ -69,6 +69,31 @@ final class PetWindowController: NSObject {
 
     @objc private func saveFrame() {
         guard let window else { return }
+        
+        // Ensure window stays within visible screen area
+        let screen = window.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? .zero
+        var frame = window.frame
+        
+        // Adjust horizontal position if needed
+        if frame.minX < visible.minX {
+            frame.origin.x = visible.minX
+        } else if frame.maxX > visible.maxX {
+            frame.origin.x = visible.maxX - frame.width
+        }
+        
+        // Adjust vertical position if needed
+        if frame.minY < visible.minY {
+            frame.origin.y = visible.minY
+        } else if frame.maxY > visible.maxY {
+            frame.origin.y = visible.maxY - frame.height
+        }
+        
+        // Only set frame if it changed
+        if frame != window.frame {
+            window.setFrame(frame, display: false, animate: false)
+        }
+        
         UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: frameKey)
     }
 
