@@ -371,3 +371,5 @@ git commit -m "docs: verify compact menu bar and ring punch time"
   }
   ```
 - 相应更新 spec §5/§7/§8 与 verification v16 文案。
+
+修订 2（2026-09-16）：用户确认菜单栏弹窗的「上班打卡 / 下班打卡」两行要**整行删除**（不只是去掉时间）。Task 3 的产物作废：`MenuBarView` 删除两行 `statusRow` 调用与 `statusRow` / `scheduleInactive` 定义，宽度 `200 → 160`；圆环未打卡时上行仍显示「上班打卡」。spec §3/§4/§6、verification v4/v16 已同步。
