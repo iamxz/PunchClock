@@ -1,18 +1,6 @@
 import SwiftUI
 import DakaCore
 
-/// 健康提醒内容（在全屏强提示里展示）。
-struct HealthAlert: Identifiable, Equatable {
-    enum Kind: Equatable { case water, movement }
-
-    let kind: Kind
-    let title: String
-    let body: String
-    let repeatIntervalSeconds: TimeInterval
-
-    var id: Int { kind == .water ? 0 : 1 }
-}
-
 @MainActor
 final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []

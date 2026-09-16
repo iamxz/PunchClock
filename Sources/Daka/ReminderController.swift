@@ -37,6 +37,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     private var builtFrames: [CGRect] = []
     private var reassertTimer: Timer?
     private var snoozeTimer: Timer?
+    private var clockTimer: Timer?
     private var currentTasks: [PunchTask] = []
     private var currentHealthAlerts: [HealthAlert] = []
     private var isSnoozed = false
@@ -84,11 +85,15 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     }
 
     func updateHealth(_ alerts: [HealthAlert], settings: DakaCore.Settings, now: Date) {
-        let identityChanged = alerts.map(\.kind) != currentHealthAlerts.map(\.kind)
+        let identityChanged = !HealthAlert.sameIdentity(currentHealthAlerts, alerts)
         currentHealthAlerts = alerts
         overlayModel.healthAlerts = alerts
         overlayModel.settings = settings
         overlayModel.now = now
+        if isSnoozed {
+            rescheduleSnoozeIfNeeded()
+            return
+        }
         syncOverlay(activate: identityChanged)
     }
 
@@ -102,6 +107,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     deinit {
         reassertTimer?.invalidate()
         snoozeTimer?.invalidate()
+        clockTimer?.invalidate()
     }
 
     private var hasContent: Bool {
@@ -110,10 +116,13 @@ final class ReminderController: @preconcurrency ReminderPresenting {
 
     private var effectiveReassertInterval: TimeInterval {
         if !currentTasks.isEmpty { return reassertInterval }
-        return currentHealthAlerts.map(\.repeatIntervalSeconds).min() ?? reassertInterval
+        return HealthAlert.minimumRepeatInterval(
+            currentHealthAlerts.map(\.repeatIntervalSeconds),
+            fallback: reassertInterval)
     }
 
     private func syncOverlay(activate: Bool) {
+        updateClockTimer()
         guard !isSnoozed else { return }
         if hasContent {
             rebuildWindowsIfNeeded()
@@ -187,7 +196,17 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         stopReassertTimer()
         for w in windows { w.orderOut(nil) }
         isSnoozed = true
+        updateClockTimer()
         scheduleSnooze()
+    }
+
+    private func rescheduleSnoozeIfNeeded() {
+        guard isSnoozed, hasContent, let snoozeTimer, snoozeTimer.isValid else { return }
+        let desired = snoozeInterval()
+        let remaining = snoozeTimer.fireDate.timeIntervalSinceNow
+        if desired < remaining {
+            scheduleSnooze()
+        }
     }
 
     private func snoozeInterval() -> TimeInterval {
@@ -205,6 +224,22 @@ final class ReminderController: @preconcurrency ReminderPresenting {
 
     func showMessage(_ text: String?) {
         overlayModel.message = text
+    }
+
+    /// 只有健康提醒（无打卡任务）时，打卡调度不再逐秒刷新，由这里保持遮罩时钟走动。
+    private func updateClockTimer() {
+        let shouldRun = hasContent && currentTasks.isEmpty && !isSnoozed
+        if shouldRun {
+            guard clockTimer == nil else { return }
+            let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.overlayModel.now = Date() }
+            }
+            RunLoop.main.add(t, forMode: .common)
+            clockTimer = t
+        } else {
+            clockTimer?.invalidate()
+            clockTimer = nil
+        }
     }
 
     private func resume() {
