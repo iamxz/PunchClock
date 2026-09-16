@@ -1,9 +1,13 @@
 APP_NAME   := Daka
-RELEASE_DIR := .build/release
+BUNDLE_ID  := com.xue.daka
 APP_BUNDLE := build/$(APP_NAME).app
+PKG_ROOT   := build/pkgroot
+PKG_VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
+PKG_OUT    := build/$(APP_NAME)-$(PKG_VERSION).pkg
+UNIVERSAL  := --arch arm64 --arch x86_64
 INSTALL_DIR := /Applications
 
-.PHONY: build test icon app install clean
+.PHONY: build test icon app assemble pkg install clean
 
 build:
 	swift build -c release
@@ -15,11 +19,15 @@ icon:
 	swift scripts/make-appicon.swift Resources/AppIcon.iconset
 	iconutil -c icns Resources/AppIcon.iconset -o Resources/Daka.icns
 
-app: build
+app:
+	$(MAKE) assemble ARCHS=
+
+assemble:
+	swift build -c release $(ARCHS)
 	rm -rf $(APP_BUNDLE)
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS
 	mkdir -p $(APP_BUNDLE)/Contents/Resources
-	cp $(RELEASE_DIR)/$(APP_NAME) $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
+	cp "$$(swift build -c release $(ARCHS) --show-bin-path)/$(APP_NAME)" $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(APP_BUNDLE)/Contents/Info.plist
 	cp Resources/Daka.icns $(APP_BUNDLE)/Contents/Resources/Daka.icns
 	codesign --force --sign - "$(APP_BUNDLE)"
