@@ -114,8 +114,8 @@ struct PunchButton: View {
         if isPressing { return [task.title] }
 
         var lines: [String] = []
-        if let punch = PunchRules.latestPunch(record, task: task) {
-            lines.append(Self.timeFormatter.string(from: punch))
+        if let morning = record.morningDoneAt {
+            lines.append(Self.timeFormatter.string(from: morning))
         } else {
             lines.append(task.title)
         }
