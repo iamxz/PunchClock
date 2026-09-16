@@ -15,7 +15,7 @@
 - **系统事件响应**：休眠唤醒、系统时间/时区变更后立即重算提醒。
 - **数据容错**：写盘原子替换；JSON 损坏时自动备份并重建，菜单栏可见错误。
 - **打卡统计**：主窗口「统计」页展示四张指标卡（本月打卡 / 连续打卡 / 平均上班 / 缺卡）与最近 7 / 14 / 30 天每日上班时长柱状图。
-- **喝水 / 走动**：桌宠会定时提醒你喝水、起身活动；点一下即可记录一杯水 / 一次起身，桌宠表情和气泡会回应。提醒只在工作日、打卡工作时段内生效。
+- **喝水 / 走动**：到点同样以全屏强提示提醒你喝水、起身活动，可一键记录一杯水 / 一次起身。提醒只在工作日、打卡工作时段内生效。
 - **健康统计**：控制中心「喝水」「久坐」页展示今日进度、连续达标、平均每日与 7 / 14 / 30 天柱状图（含目标线）。
 
 ## 系统要求
@@ -45,11 +45,12 @@ make clean     # 清理 .build 与 build
 - **关闭主窗口不退出应用**，应用继续在后台提醒；再次点 Dock 图标或菜单栏面板右上角的「控制中心」图标可重新打开。
 - 菜单栏图标两态：`checkmark.seal` 正常 / `exclamationmark.triangle.fill` 有待打卡。
 - 菜单栏面板：右上角「控制中心」图标（`switch.2`）+ 今日状态 + 打卡按钮。
-- **应用不能随便退出**：菜单栏 / 桌宠 / 工具面板都没有退出入口，Cmd+Q 与 Dock 退出同样被拦截，请让它在后台常驻持续提醒。
+- **应用不能随便退出**：菜单栏 / 控制中心都没有退出入口，Cmd+Q 与 Dock 退出同样被拦截，请让它在后台常驻持续提醒。
 - **需要退出时**：主窗口「设置 → 系统与启动 → 退出应用」，二次确认后才退出。
 - **系统注销 / 关机 / 重启**时允许应用退出，不会阻碍关机。
-- 全屏遮罩可用 **ESC 暂停**：立即隐藏，过「重复提醒」间隔后自动重新弹出，直到完成打卡；Cmd+W / Cmd+M / Cmd+H 仍无效。
+- 全屏遮罩可用 **ESC 暂停**：立即隐藏，过「重复提醒」间隔后自动重新弹出，直到完成打卡或健康动作；Cmd+W / Cmd+M / Cmd+H 仍无效。
 - 打卡后若当天仍未完成（如下班未满最少工时或缺少上班卡），遮罩会显示原因与还差多久。
+- 喝水 / 走动到点同样弹出全屏强提示（含「已喝水」「已起身」按钮），打卡与健康提醒可同一全屏同时出现，处理完一样即自动收起对应部分。
 
 ## 数据存储
 
@@ -120,7 +121,7 @@ Sources/
     DakaClock.swift       可注入时钟
     Statistics.swift      统计口径
     PunchFeedback.swift   打卡未完成原因文案
-    DakaDate.swift / PunchRules.swift / PunchTarget.swift / PetMood.swift / ToolCatalog.swift 日期、打卡规则与工具目录
+    DakaDate.swift / PunchRules.swift / PunchTarget.swift / ToolCatalog.swift 日期、打卡规则与工具目录
     HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
     LaunchAgentPlist.swift 定点拉起 plist 生成
   Daka/            # AppKit + SwiftUI 应用层
@@ -129,9 +130,8 @@ Sources/
     MainWindowController.swift / SettingsPage.swift / SettingsPages.swift
     StatisticsView.swift / PunchToolView.swift / PunchButton.swift
     ReminderController.swift / OverlayView.swift
-    PetView.swift / PetWindowController.swift / PetSpeechBubble.swift / ToolPanelView.swift
     HealthReminderController.swift / HealthToolViews.swift
-    GentleNotifier.swift / LoginItemManager.swift / ScheduledLaunchManager.swift
+    LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
 Resources/             # Info.plist、Daka.icns 应用图标、状态栏图标
 scripts/               # 图标生成脚本（make-appicon.swift 等）
