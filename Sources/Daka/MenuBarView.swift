@@ -21,12 +21,12 @@ struct MenuBarView: View {
             }
 
             VStack(spacing: 6) {
-                statusRow(.morning, done: model.record.morningDone, at: model.record.morningDoneAt,
+                statusRow(.morning, done: model.record.morningDone,
                           count: model.record.morningPunches.count,
-                          start: model.settings.morningWindowStart, deadline: model.settings.morningDeadline)
-                statusRow(.evening, done: model.isEveningComplete, at: model.effectiveEveningPunch,
+                          deadline: model.settings.morningDeadline)
+                statusRow(.evening, done: model.isEveningComplete,
                           count: model.record.eveningPunches.count,
-                          start: model.settings.eveningWindowStart, deadline: model.settings.eveningDeadline)
+                          deadline: model.settings.eveningDeadline)
             }
 
             PunchButton(task: PunchTarget.resolve(record: model.record,
@@ -39,7 +39,7 @@ struct MenuBarView: View {
             }
         }
         .padding(16)
-        .frame(width: 220)
+        .frame(width: 180)
     }
 
     private var scheduleInactive: Bool {
@@ -48,33 +48,26 @@ struct MenuBarView: View {
             || !model.settings.workdays.contains(DakaDate.weekday(of: model.now))
     }
 
-    private func statusRow(_ task: PunchTask, done: Bool, at: Date?, count: Int, start: String, deadline: String) -> some View {
+    private func statusRow(_ task: PunchTask, done: Bool, count: Int, deadline: String) -> some View {
         let suffix = count > 1 ? "（\(count) 次）" : ""
         return HStack {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(done ? Color.green : Color.secondary)
             Text(task.title)
             Spacer()
-            if done, let at {
-                Text(count > 1 ? "\(Self.timeFormatter.string(from: at))（\(count) 次）" : Self.timeFormatter.string(from: at))
-                    .foregroundStyle(.secondary)
+            if done {
+                Text("已完成\(suffix)").foregroundStyle(.secondary)
             } else if scheduleInactive {
                 Text("今日不提醒").foregroundStyle(.secondary)
             } else if model.reminderState.contains(task) {
                 if let due = DakaDate.date(on: model.now, at: deadline), model.now >= due {
-                    Text("已过截止 \(deadline)\(suffix)").foregroundStyle(.red)
+                    Text("已过截止\(suffix)").foregroundStyle(.red)
                 } else {
-                    Text("窗口内 \(start)–\(deadline)\(suffix)").foregroundStyle(.orange)
+                    Text("窗口内\(suffix)").foregroundStyle(.orange)
                 }
             } else {
-                Text("待打卡 \(start)–\(deadline)\(suffix)").foregroundStyle(.secondary)
+                Text("待打卡\(suffix)").foregroundStyle(.secondary)
             }
         }
     }
-
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f
-    }()
 }
