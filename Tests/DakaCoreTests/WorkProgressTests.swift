@@ -34,13 +34,32 @@ final class WorkProgressTests: XCTestCase {
         XCTAssertEqual(WorkProgress.fraction(record, now: now, minWorkDuration: eight), 1)
     }
 
-    func testCompletionUsesLatestQualifyingPunch() {
+    func testIgnoresNonQualifyingEveningPunch() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
                                eveningPunches: [TestTime.date(2026, 9, 14, 16, 0),
                                                 TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 21, 0)
         XCTAssertEqual(WorkProgress.elapsed(record, now: now, minWorkDuration: eight),
                        9 * 3600)
+    }
+
+    func testCompletionUsesLatestOfTwoQualifyingPunches() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 17, 0),
+                                                TestTime.date(2026, 9, 14, 18, 0)])
+        let now = TestTime.date(2026, 9, 14, 21, 0)
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, minWorkDuration: eight),
+                       9 * 3600)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, minWorkDuration: eight), 1)
+    }
+
+    func testExactlyMinimumIsComplete() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 17, 0)])
+        let now = TestTime.date(2026, 9, 14, 17, 0)
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, minWorkDuration: eight),
+                       8 * 3600)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, minWorkDuration: eight), 1)
     }
 
     func testZeroMinimumIsFull() {
