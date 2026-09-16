@@ -38,10 +38,6 @@ final class AppModel: ObservableObject {
 
     var minWorkDuration: TimeInterval { settings.minWorkDuration }
 
-    var effectiveEveningPunch: Date? {
-        PunchRules.effectiveEveningPunch(record, minWorkDuration: settings.minWorkDuration)
-    }
-
     var isEveningComplete: Bool {
         PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration)
     }

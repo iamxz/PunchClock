@@ -14,5 +14,4 @@ public enum PunchRules {
                                          minWorkDuration: TimeInterval) -> Bool {
         effectiveEveningPunch(record, minWorkDuration: minWorkDuration) != nil
     }
-
 }
