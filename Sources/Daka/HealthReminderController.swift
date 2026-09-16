@@ -4,7 +4,8 @@ import DakaCore
 /// 独立的健康提醒调度：按工作时段评估喝水/走动，到期以全屏强提示呈现。
 @MainActor
 final class HealthReminderController {
-    /// 当到期提醒集合变化时回调（空数组表示全部解决）。
+    /// 每次 tick 汇报当前到期的提醒集合（空数组表示全部已解决）。
+    /// 消费方据此持续刷新内容，是否重新激活窗口由消费方判断。
     var onHealthAlerts: (([HealthAlert]) -> Void)?
     var onTick: (() -> Void)?
 
@@ -14,7 +15,6 @@ final class HealthReminderController {
     private let interval: TimeInterval
 
     private var timer: Timer?
-    private var lastEmitted: [HealthAlert] = []
 
     init(clock: DakaClock,
          healthStore: HealthStore,
@@ -73,10 +73,7 @@ final class HealthReminderController {
                                       repeatIntervalSeconds: every))
         }
 
-        if alerts != lastEmitted {
-            lastEmitted = alerts
-            onHealthAlerts?(alerts)
-        }
+        onHealthAlerts?(alerts)
         onTick?()
     }
 }

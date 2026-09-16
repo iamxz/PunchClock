@@ -64,7 +64,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         overlayModel.settings = settings
         overlayModel.now = now
         reassertInterval = settings.effectiveReminderIntervalSeconds
-        syncOverlay()
+        syncOverlay(activate: true)
     }
 
     func refresh(settings: DakaCore.Settings, now: Date) {
@@ -84,18 +84,19 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     }
 
     func updateHealth(_ alerts: [HealthAlert], settings: DakaCore.Settings, now: Date) {
+        let identityChanged = alerts.map(\.kind) != currentHealthAlerts.map(\.kind)
         currentHealthAlerts = alerts
         overlayModel.healthAlerts = alerts
         overlayModel.settings = settings
         overlayModel.now = now
-        syncOverlay()
+        syncOverlay(activate: identityChanged)
     }
 
     func hide() {
         stopReassertTimer()
         currentTasks = []
         overlayModel.message = nil
-        syncOverlay()
+        syncOverlay(activate: false)
     }
 
     deinit {
@@ -112,12 +113,14 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         return currentHealthAlerts.map(\.repeatIntervalSeconds).min() ?? reassertInterval
     }
 
-    private func syncOverlay() {
+    private func syncOverlay(activate: Bool) {
         guard !isSnoozed else { return }
         if hasContent {
             rebuildWindowsIfNeeded()
-            for w in windows { w.makeKeyAndOrderFront(nil) }
-            NSApp.activate(ignoringOtherApps: true)
+            if activate {
+                for w in windows { w.makeKeyAndOrderFront(nil) }
+                NSApp.activate(ignoringOtherApps: true)
+            }
             startReassertTimer()
         } else {
             stopReassertTimer()
@@ -208,6 +211,6 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         snoozeTimer?.invalidate()
         snoozeTimer = nil
         isSnoozed = false
-        syncOverlay()
+        syncOverlay(activate: true)
     }
 }
