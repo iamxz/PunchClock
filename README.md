@@ -41,12 +41,12 @@ make clean     # 清理 .build 与 build
 
 `make pkg` 产出的 `build/Daka-<版本>.pkg` 是 Universal 安装包，双击后自动把应用装到 `/Applications/Daka.app`。
 
-安装包与 app 均为 **ad-hoc 签名、未公证**，别人首次打开会被 Gatekeeper 拦截，需任选一种放行：
+app 为 **ad-hoc 签名**、安装包本身**未签名**，且均**未公证**，别人首次打开会被 Gatekeeper 拦截，需任选一种放行：
 
 - 右键 pkg →「打开」，或
 - 系统设置 →「隐私与安全性」→「仍要打开」。
 
-若安装后启动仍提示已损坏/无法验证，执行：
+若安装后启动仍提示已损坏/无法验证，可尝试：
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/Daka.app
@@ -172,7 +172,7 @@ swift test
 - 系统注销/关机开始时放行退出；若注销被取消，放行状态最多 60 秒后自动恢复封锁（因此极慢的关机流程理论上可能被短暂拦截，属已知边界）。
 - 不做节假日日历，仅按星期判断，提供手动「今天不打卡」。
 - 定点拉起依赖 `launchd`，需要用户已登录且系统已唤醒；到点拉起在后台运行，不会弹出主窗口（已在运行时则跳过，不重复拉起、不弹主窗口）。
-- 安装包为 ad-hoc 签名、未公证（无 Developer ID 证书），分发给他人需按「分发安装包」一节放行 Gatekeeper。
+- app 为 ad-hoc 签名、安装包未签名，且均未公证（无 Developer ID 证书）；分发给他人需按「分发安装包」一节放行 Gatekeeper。
 
 ## 设计文档
 
