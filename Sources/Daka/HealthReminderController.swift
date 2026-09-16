@@ -1,21 +1,20 @@
 import Foundation
 import DakaCore
 
-/// 独立的健康提醒调度：按工作时段评估喝水/走动，到点发通知并驱动桌宠气泡。
+/// 独立的健康提醒调度：按工作时段评估喝水/走动，到期以全屏强提示呈现。
 @MainActor
 final class HealthReminderController {
-    var onSpeak: ((String) -> Void)?
+    /// 当到期提醒集合变化时回调（空数组表示全部解决）。
+    var onHealthAlerts: (([HealthAlert]) -> Void)?
     var onTick: (() -> Void)?
 
     private let clock: DakaClock
     private let healthStore: HealthStore
     private let scheduleStore: PunchStore
-    private let notifier = GentleNotifier()
     private let interval: TimeInterval
 
     private var timer: Timer?
-    private var lastWaterNoticeAt: Date?
-    private var lastMovementNoticeAt: Date?
+    private var lastEmitted: [HealthAlert] = []
 
     init(clock: DakaClock,
          healthStore: HealthStore,
@@ -25,7 +24,6 @@ final class HealthReminderController {
         self.healthStore = healthStore
         self.scheduleStore = scheduleStore
         self.interval = interval
-        notifier.requestAuthorizationIfNeeded()
     }
 
     func start() {
@@ -56,38 +54,29 @@ final class HealthReminderController {
         let status = HealthRules.status(health: health, schedule: schedule,
                                         record: record, skipped: skipped, now: now)
 
-        var speech: String?
+        var alerts: [HealthAlert] = []
 
         if status.waterDue {
             let every = TimeInterval(health.effectiveWaterIntervalMinutes * 60)
-            if lastWaterNoticeAt.map({ now.timeIntervalSince($0) >= every }) ?? true {
-                lastWaterNoticeAt = now
-                let minutes = status.minutesSinceDrink ?? health.effectiveWaterIntervalMinutes
-                notifier.notify(id: "daka.water",
-                                title: "该喝水啦 💧",
-                                body: "已经 \(minutes) 分钟没喝水了，起来接杯水吧。")
-                speech = "该喝水啦～💧"
-            }
-        } else {
-            lastWaterNoticeAt = nil
+            let minutes = status.minutesSinceDrink ?? health.effectiveWaterIntervalMinutes
+            alerts.append(HealthAlert(kind: .water,
+                                      title: "该喝水啦 💧",
+                                      body: "已经 \(minutes) 分钟没喝水了，起来接杯水吧。",
+                                      repeatIntervalSeconds: every))
         }
-
         if status.movementDue {
             let every = TimeInterval(health.effectiveMovementIntervalMinutes * 60)
-            if lastMovementNoticeAt.map({ now.timeIntervalSince($0) >= every }) ?? true {
-                lastMovementNoticeAt = now
-                let minutes = status.minutesSinceStand ?? health.effectiveMovementIntervalMinutes
-                notifier.notify(id: "daka.movement",
-                                title: "起来走两步 🚶",
-                                body: "坐了 \(minutes) 分钟，活动一下肩颈和腿吧。")
-                if speech == nil { speech = "坐太久啦，起来走两步 🚶" }
-            }
-        } else {
-            lastMovementNoticeAt = nil
+            let minutes = status.minutesSinceStand ?? health.effectiveMovementIntervalMinutes
+            alerts.append(HealthAlert(kind: .movement,
+                                      title: "起来走两步 🚶",
+                                      body: "坐了 \(minutes) 分钟，活动一下肩颈和腿吧。",
+                                      repeatIntervalSeconds: every))
         }
 
-        if let speech { onSpeak?(speech) }
-
+        if alerts != lastEmitted {
+            lastEmitted = alerts
+            onHealthAlerts?(alerts)
+        }
         onTick?()
     }
 }

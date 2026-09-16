@@ -101,6 +101,10 @@ final class AppModel: ObservableObject {
                                                       healthStore: healthStore,
                                                       scheduleStore: store)
         healthReminder.onTick = { [weak self] in self?.refreshHealth() }
+        healthReminder.onHealthAlerts = { [weak self] alerts in
+            guard let self else { return }
+            self.reminder?.updateHealth(alerts, settings: self.settings, now: self.now)
+        }
         self.healthReminder = healthReminder
         healthReminder.start()
 
@@ -178,6 +182,7 @@ final class AppModel: ObservableObject {
             try healthStore.log(kind, at: clock.now)
             refreshHealth()
             scheduler?.tick()
+            healthReminder?.tick()
         } catch {
             errorMessage = "记录失败：\(error.localizedDescription)"
             throw error
