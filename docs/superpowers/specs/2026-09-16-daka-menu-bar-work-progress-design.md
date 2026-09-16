@@ -59,8 +59,9 @@
 
 ## 6. 刷新机制
 
-圆环用 `TimelineView(.periodic(from: .now, by: 60))` 包裹，每分钟重算进度，保证小时数随时间走动。不改动 `AppModel` / `Scheduler` 的发布节奏。
+圆环用 `TimelineView(.everyMinute)` 包裹，每分钟重算进度，保证小时数随时间走动。不改动 `AppModel` / `Scheduler` 的发布节奏。
 
+- 用 `.everyMinute` 而非 `.periodic(from: .now, by: 60)`：后者会在每次外层视图重绘时以 `.now` 重新锚定，若有更短的无关发布（如 30 秒一次的健康状态）不断重绘，60 秒周期永远不到期、不会自行触发。`.everyMinute` 按墙上时钟对齐分钟边界，不受重绘影响。
 - 由于 `TimelineView` 只重跑内容闭包、不会重建外层视图，传入的 `now` 值会过期；因此 `PunchButton` 取一个 `nowProvider: () -> Date`（调用点传 `{ model.now }`），在闭包内实时取值。
 - 空闲态每次重算纯函数，开销可忽略。
 - `MenuBarExtra` 面板打开时可见即刷新；关闭时不渲染，无需刷新。
@@ -96,10 +97,10 @@ public enum WorkProgress {
   - 圆环 `trim` 取 `press.progress`（按压中）或空闲进度。
   - 圆心文字：按压中 → 任务标题；空闲 → §4 规则。
   - 环色：按压中按任务；空闲完成态绿；空闲未完成按任务。
-  - `TimelineView(.periodic(from: .now, by: 60))` 包裹圆环内容。
+  - `TimelineView(.everyMinute)` 包裹圆环内容。
   - 下方说明文字 `长按 3 秒打卡（可重复）` 不变。
 - `Sources/DakaCore/WorkProgress.swift`（新增）。
-- 不改 `AppModel`、`MenuBarView`、`ToolPanelView` 的调用签名：`PunchButton` 现有 `task` / `onComplete` 参数已足够；进度所需 `record`、`now`、`minWorkDuration` 需从 `model` 传入，因此 `PunchButton` 需要新增这些输入（见下）。
+- `MenuBarView`、`ToolPanelView` 两个调用点补传 `record` / `nowProvider` / `minWorkDuration`（见 §8.1）。
 
 ### 8.1 `PunchButton` 接口调整
 
