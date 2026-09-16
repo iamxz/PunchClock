@@ -169,9 +169,11 @@
 ## v18：PKG 独立安装包
 
 - [ ] `make pkg` 产出 `build/Daka-1.0.pkg`，无报错。
-- [ ] `lipo -archs build/Daka.app/Contents/MacOS/Daka` 输出 `arm64 x86_64`（Intel 与 Apple Silicon 都可装）。
+- [ ] `lipo -archs build/Daka.app/Contents/MacOS/Daka` 同时包含 `arm64` 与 `x86_64`（Intel 与 Apple Silicon 都可装）。
 - [ ] `pkgutil --payload-files build/Daka-1.0.pkg` 列出 `Applications/Daka.app/...`。
-- [ ] 双击 pkg 走完安装向导，`/Applications/Daka.app` 为本次构建；从 `/Applications` 启动后 Dock + 菜单栏 + 主窗口正常。
+- [ ] `codesign -dv build/Daka.app` 显示 `Signature=adhoc`；`pkgutil --check-signature build/Daka-1.0.pkg` 显示无签名（均为预期）。
+- [ ] 先经「设置 → 系统与启动 → 退出应用」退出应用，再双击 pkg 走完安装向导；`/Applications/Daka.app` 为本次构建；从 `/Applications` 启动后 Dock + 菜单栏 + 主窗口正常。
 - [ ] 从 `/Applications` 运行时「定点拉起」生效（应用要求路径以 `/Applications/` 开头）。
 - [ ] `make app` 仍只编本机架构（未回归）。
-- [ ] `make install` 仍正常安装并启动。
+- [ ] `make install` 仍正常安装（输出 `Installed to /Applications/Daka.app`，不自动启动应用）。
+- [ ] `make test` 全绿（本次未改 Swift 代码）。
