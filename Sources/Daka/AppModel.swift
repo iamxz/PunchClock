@@ -32,14 +32,14 @@ final class AppModel: ObservableObject {
 
     var now: Date { clock.now }
 
-    var minWorkDuration: TimeInterval { settings.minWorkDuration }
+    var workDuration: TimeInterval { settings.workDuration }
 
     var isEveningComplete: Bool {
         AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: .current)
     }
 
-    func setMinWorkHours(_ hours: Double) {
-        updateSettings { $0.minWorkDurationHours = hours }
+    func setWorkDurationHours(_ hours: Double) {
+        updateSettings { $0.workDurationHours = hours }
     }
 
     private let store: PunchStore
@@ -280,10 +280,6 @@ final class AppModel: ObservableObject {
     }
 
     func setEnabled(_ enabled: Bool) { updateSettings { $0.enabled = enabled } }
-    func updateMorningStart(_ hhmm: String) { updateSettings { $0.morningWindowStart = hhmm } }
-    func updateMorningDeadline(_ hhmm: String) { updateSettings { $0.morningDeadline = hhmm } }
-    func updateEveningStart(_ hhmm: String) { updateSettings { $0.eveningWindowStart = hhmm } }
-    func updateEveningDeadline(_ hhmm: String) { updateSettings { $0.eveningDeadline = hhmm } }
 
     func setReminderIntervalMinutes(_ minutes: Int) {
         let clamped = min(60, max(1, minutes))

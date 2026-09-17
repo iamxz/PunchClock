@@ -4,13 +4,9 @@ import Foundation
 public enum LaunchAgentPlist {
     public static let label = "com.xue.daka.schedule"
 
-    public static func make(morningWindowStart: String,
-                            morningDeadline: String,
-                            eveningWindowStart: String,
-                            eveningDeadline: String,
-                            bundleID: String) -> String {
+    public static func make(times: [String], bundleID: String) -> String {
         var intervals: [[String: Int]] = []
-        for hhmm in [morningWindowStart, morningDeadline, eveningWindowStart, eveningDeadline] {
+        for hhmm in times {
             guard let time = DakaDate.timeComponents(hhmm) else { continue }
             let entry = ["Hour": time.hour, "Minute": time.minute]
             if !intervals.contains(entry) {

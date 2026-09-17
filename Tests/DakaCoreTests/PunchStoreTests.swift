@@ -43,13 +43,13 @@ final class PunchStoreTests: XCTestCase {
 
     func testSettingsPersist() throws {
         var settings = Settings.default
-        settings.morningDeadline = "08:00"
+        settings.flexMinutes = 45
         settings.enabled = false
         let store = PunchStore(fileURL: url)
         try store.updateSettings(settings)
 
         let reloaded = PunchStore(fileURL: url)
-        XCTAssertEqual(reloaded.data.settings.morningDeadline, "08:00")
+        XCTAssertEqual(reloaded.data.settings.flexMinutes, 45)
         XCTAssertFalse(reloaded.data.settings.enabled)
     }
 

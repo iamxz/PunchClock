@@ -64,4 +64,21 @@ final class SettingsTests: XCTestCase {
         s.reminderIntervalSeconds = 120
         XCTAssertEqual(s.effectiveReminderIntervalSeconds, 120)
     }
+
+    func testEncodeWritesOnlyNewKeys() throws {
+        let s = Settings.default
+        let data = try JSONEncoder().encode(s)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        XCTAssertNotNil(json["enabled"])
+        XCTAssertNotNil(json["workdays"])
+        XCTAssertNotNil(json["workStartTime"])
+        XCTAssertNotNil(json["workDurationHours"])
+        XCTAssertNotNil(json["flexMinutes"])
+        XCTAssertNotNil(json["reminderIntervalSeconds"])
+        XCTAssertNil(json["morningWindowStart"])
+        XCTAssertNil(json["morningDeadline"])
+        XCTAssertNil(json["eveningWindowStart"])
+        XCTAssertNil(json["eveningDeadline"])
+        XCTAssertNil(json["minWorkDurationHours"])
+    }
 }

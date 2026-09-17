@@ -24,31 +24,26 @@ final class LaunchAgentPlistTests: XCTestCase {
     }
 
     func testInvalidTimeStringsAreSkipped() throws {
-        XCTAssertEqual(try intervals(makePlist(morningWindowStart: "oops")).count, 3)
+        let times = ["oops", "09:30", "18:00", "18:30"]
+        XCTAssertEqual(try intervals(LaunchAgentPlist.make(times: times, bundleID: "com.xue.daka")).count, 3)
     }
 
     func testAllInvalidYieldsNoIntervalKey() throws {
-        let dict = try parse(makePlist(morningWindowStart: "x", morningDeadline: "y",
-                                       eveningWindowStart: "z", eveningDeadline: "w"))
+        let times = ["x", "y", "z", "w"]
+        let dict = try parse(LaunchAgentPlist.make(times: times, bundleID: "com.xue.daka"))
         XCTAssertNil(dict["StartCalendarInterval"])
     }
 
     func testDuplicateTimesAreDeduped() throws {
-        let entries = try intervals(makePlist(morningWindowStart: "09:00",
-                                              morningDeadline: "09:00"))
+        let times = ["09:00", "09:00", "18:00", "18:30"]
+        let entries = try intervals(LaunchAgentPlist.make(times: times, bundleID: "com.xue.daka"))
         XCTAssertEqual(entries.count, 3)
     }
 
     // MARK: - Helpers
 
-    private func makePlist(morningWindowStart: String = "09:00",
-                           morningDeadline: String = "09:30",
-                           eveningWindowStart: String = "18:00",
-                           eveningDeadline: String = "18:30") -> String {
-        LaunchAgentPlist.make(morningWindowStart: morningWindowStart,
-                              morningDeadline: morningDeadline,
-                              eveningWindowStart: eveningWindowStart,
-                              eveningDeadline: eveningDeadline,
+    private func makePlist() -> String {
+        LaunchAgentPlist.make(times: ["09:00", "09:30", "18:00", "18:30"],
                               bundleID: "com.xue.daka")
     }
 

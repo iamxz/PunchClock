@@ -27,19 +27,9 @@ public struct ReminderState: Equatable, Sendable {
 public struct Settings: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var workdays: Set<Int>
-
-    // New attendance parameters
     public var workStartTime: String
     public var workDurationHours: Double
     public var flexMinutes: Int
-
-    // Legacy fields (kept for transition, removed in Task 5)
-    public var morningWindowStart: String
-    public var morningDeadline: String
-    public var eveningWindowStart: String
-    public var eveningDeadline: String
-    public var minWorkDurationHours: Double
-
     public var reminderIntervalSeconds: TimeInterval
 
     public init(enabled: Bool = true,
@@ -47,23 +37,13 @@ public struct Settings: Codable, Equatable, Sendable {
                 workStartTime: String = "09:00",
                 workDurationHours: Double = 9,
                 flexMinutes: Int = 30,
-                morningWindowStart: String = "09:00",
-                morningDeadline: String = "09:30",
-                eveningWindowStart: String = "18:00",
-                eveningDeadline: String = "18:30",
-                reminderIntervalSeconds: TimeInterval = 120,
-                minWorkDurationHours: Double = 8) {
+                reminderIntervalSeconds: TimeInterval = 120) {
         self.enabled = enabled
         self.workdays = workdays
         self.workStartTime = workStartTime
         self.workDurationHours = workDurationHours
         self.flexMinutes = flexMinutes
-        self.morningWindowStart = morningWindowStart
-        self.morningDeadline = morningDeadline
-        self.eveningWindowStart = eveningWindowStart
-        self.eveningDeadline = eveningDeadline
         self.reminderIntervalSeconds = reminderIntervalSeconds
-        self.minWorkDurationHours = minWorkDurationHours
     }
 
     /// 提醒间隔下限 30 秒，避免异常配置导致每秒刷屏。
@@ -74,15 +54,12 @@ public struct Settings: Codable, Equatable, Sendable {
     public var workDuration: TimeInterval { max(0.5, workDurationHours) * 3600 }
     public var flexDuration: TimeInterval { TimeInterval(max(0, flexMinutes) * 60) }
 
-    public var minWorkDuration: TimeInterval { workDuration }
-
     public static let `default` = Settings()
 
     private enum CodingKeys: String, CodingKey {
         case enabled, workdays
-        // New keys
         case workStartTime, workDurationHours, flexMinutes
-        // Legacy keys
+        // Legacy keys kept only for decoder migration
         case morningWindowStart, morningDeadline
         case eveningWindowStart, eveningDeadline
         case minWorkDurationHours
@@ -97,14 +74,7 @@ public struct Settings: Codable, Equatable, Sendable {
         self.workdays = try c.decodeIfPresent(Set<Int>.self, forKey: .workdays) ?? d.workdays
         self.reminderIntervalSeconds = try c.decodeIfPresent(TimeInterval.self, forKey: .reminderIntervalSeconds) ?? d.reminderIntervalSeconds
 
-        // Legacy fields (decode for storage, used as fallback)
-        self.morningWindowStart = try c.decodeIfPresent(String.self, forKey: .morningWindowStart) ?? d.morningWindowStart
-        self.morningDeadline = try c.decodeIfPresent(String.self, forKey: .morningDeadline) ?? d.morningDeadline
-        self.eveningWindowStart = try c.decodeIfPresent(String.self, forKey: .eveningWindowStart) ?? d.eveningWindowStart
-        self.eveningDeadline = try c.decodeIfPresent(String.self, forKey: .eveningDeadline) ?? d.eveningDeadline
-        self.minWorkDurationHours = try c.decodeIfPresent(Double.self, forKey: .minWorkDurationHours) ?? d.minWorkDurationHours
-
-        // Decode legacy keys directly for migration fallback
+        // Decode legacy keys for migration fallback
         let legacyMorningStart = try c.decodeIfPresent(String.self, forKey: .morningWindowStart)
         let legacyMorningDeadline = try c.decodeIfPresent(String.self, forKey: .morningDeadline)
         let legacyMinWorkHours = try c.decodeIfPresent(Double.self, forKey: .minWorkDurationHours)
@@ -126,7 +96,7 @@ public struct Settings: Codable, Equatable, Sendable {
             self.flexMinutes = fm
         } else {
             let wsStr = legacyMorningStart ?? d.workStartTime
-            let dlStr = legacyMorningDeadline ?? d.morningDeadline
+            let dlStr = legacyMorningDeadline ?? "09:30"
             let fmt = DateFormatter()
             fmt.dateFormat = "HH:mm"
             if let start = fmt.date(from: wsStr),
@@ -136,6 +106,16 @@ public struct Settings: Codable, Equatable, Sendable {
                 self.flexMinutes = d.flexMinutes
             }
         }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(enabled, forKey: .enabled)
+        try c.encode(workdays, forKey: .workdays)
+        try c.encode(workStartTime, forKey: .workStartTime)
+        try c.encode(workDurationHours, forKey: .workDurationHours)
+        try c.encode(flexMinutes, forKey: .flexMinutes)
+        try c.encode(reminderIntervalSeconds, forKey: .reminderIntervalSeconds)
     }
 }
 

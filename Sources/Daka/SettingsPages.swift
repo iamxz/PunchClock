@@ -26,17 +26,6 @@ struct ScheduleSettingsView: View {
             Toggle("启用提醒", isOn: Binding(get: { model.settings.enabled },
                                             set: { model.setEnabled($0) }))
 
-            Section("打卡窗口") {
-                DatePicker("上班窗口开始", selection: bound(\.morningWindowStart, model.updateMorningStart),
-                           displayedComponents: .hourAndMinute)
-                DatePicker("上班窗口截止", selection: bound(\.morningDeadline, model.updateMorningDeadline),
-                           displayedComponents: .hourAndMinute)
-                DatePicker("下班窗口开始", selection: bound(\.eveningWindowStart, model.updateEveningStart),
-                           displayedComponents: .hourAndMinute)
-                DatePicker("下班窗口截止", selection: bound(\.eveningDeadline, model.updateEveningDeadline),
-                           displayedComponents: .hourAndMinute)
-            }
-
             Section("重复提醒") {
                 Stepper(value: Binding(get: { Int(model.settings.reminderIntervalSeconds / 60) },
                                        set: { model.setReminderIntervalMinutes($0) }),
@@ -91,10 +80,10 @@ struct AttendanceSettingsView: View {
     var body: some View {
         Form {
             Section("考勤规则") {
-                Stepper(value: Binding(get: { model.settings.minWorkDurationHours },
-                                       set: { model.setMinWorkHours($0) }),
+                Stepper(value: Binding(get: { model.settings.workDurationHours },
+                                       set: { model.setWorkDurationHours($0) }),
                         in: 1...12, step: 0.5) {
-                    Text("每日最少工时：\(settingsHoursText(model.settings.minWorkDurationHours)) 小时")
+                    Text("每日工时：\(settingsHoursText(model.settings.workDurationHours)) 小时")
                 }
             }
         }

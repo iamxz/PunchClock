@@ -95,8 +95,14 @@ struct OverlayView: View {
     }
 
     private func overdueText(for task: PunchTask) -> String? {
-        let hhmm = task == .morning ? model.settings.morningDeadline : model.settings.eveningDeadline
-        guard let due = DakaDate.date(on: model.now, at: hhmm), model.now > due else { return nil }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm"
+        guard let start = fmt.date(from: model.settings.workStartTime) else { return nil }
+        let endInterval = task == .morning
+            ? model.settings.workDuration
+            : model.settings.workDuration + model.settings.flexDuration
+        let due = start.addingTimeInterval(endInterval)
+        guard model.now > due else { return nil }
         let seconds = Int(model.now.timeIntervalSince(due))
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60

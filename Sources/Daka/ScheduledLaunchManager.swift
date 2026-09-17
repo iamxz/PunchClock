@@ -30,15 +30,18 @@ enum ScheduledLaunchManager {
         guard Bundle.main.bundlePath.hasPrefix("/Applications/") else { return .skipped }
         guard let bundleID = Bundle.main.bundleIdentifier else { return .skipped }
 
-        let times = [settings.morningWindowStart, settings.morningDeadline,
-                     settings.eveningWindowStart, settings.eveningDeadline]
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm"
+        let times: [String]
+        if let start = fmt.date(from: settings.workStartTime) {
+            let workEnd = start.addingTimeInterval(settings.workDuration)
+            times = [settings.workStartTime, fmt.string(from: workEnd)]
+        } else {
+            times = []
+        }
         guard times.contains(where: { DakaDate.timeComponents($0) != nil }) else { return .skipped }
 
-        let plist = LaunchAgentPlist.make(morningWindowStart: settings.morningWindowStart,
-                                          morningDeadline: settings.morningDeadline,
-                                          eveningWindowStart: settings.eveningWindowStart,
-                                          eveningDeadline: settings.eveningDeadline,
-                                          bundleID: bundleID)
+        let plist = LaunchAgentPlist.make(times: times, bundleID: bundleID)
         guard !plist.isEmpty else { return InstallResult(installed: false, warning: "定点启动生成失败") }
 
         do {
