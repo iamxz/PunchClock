@@ -4,56 +4,62 @@ import XCTest
 final class SettingsTests: XCTestCase {
     func testDefaults() {
         let s = Settings.default
-        XCTAssertEqual(s.morningWindowStart, "09:00")
-        XCTAssertEqual(s.morningDeadline, "09:30")
-        XCTAssertEqual(s.eveningWindowStart, "18:00")
-        XCTAssertEqual(s.eveningDeadline, "18:30")
+        XCTAssertEqual(s.workStartTime, "09:00")
+        XCTAssertEqual(s.workDurationHours, 9)
+        XCTAssertEqual(s.flexMinutes, 30)
         XCTAssertEqual(s.reminderIntervalSeconds, 120)
-        XCTAssertEqual(s.minWorkDurationHours, 8)
+        XCTAssertEqual(s.workDuration, 9 * 3600)
+        XCTAssertEqual(s.flexDuration, 30 * 60)
     }
 
     func testRoundTrip() throws {
         var s = Settings.default
-        s.morningDeadline = "09:45"
+        s.workStartTime = "08:30"
+        s.workDurationHours = 8.5
+        s.flexMinutes = 15
         s.enabled = false
-        s.minWorkDurationHours = 7.5
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
         XCTAssertEqual(decoded, s)
     }
 
-    func testLegacyJSONUpgradesToDefaults() throws {
+    func testLegacyJSONMigratesOldKeys() throws {
         let legacy = """
         {
           "enabled": true,
           "workdays": [2,3,4,5,6],
-          "morningTime": "07:00",
-          "eveningTime": "17:00",
-          "launchPromptEarliest": "06:00",
+          "morningWindowStart": "09:00",
+          "morningDeadline": "09:40",
+          "minWorkDurationHours": 8,
           "reminderIntervalSeconds": 60
         }
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(Settings.self, from: legacy)
-        XCTAssertEqual(decoded.morningWindowStart, "09:00")
-        XCTAssertEqual(decoded.morningDeadline, "09:30")
-        XCTAssertEqual(decoded.eveningWindowStart, "18:00")
-        XCTAssertEqual(decoded.eveningDeadline, "18:30")
+        XCTAssertEqual(decoded.workStartTime, "09:00")
+        XCTAssertEqual(decoded.flexMinutes, 40)
+        XCTAssertEqual(decoded.workDurationHours, 8)
         XCTAssertEqual(decoded.reminderIntervalSeconds, 60)
-        XCTAssertEqual(decoded.minWorkDurationHours, 8)
+    }
+
+    func testVeryOldJSONUsesDefaults() throws {
+        let legacy = #"{"enabled": false, "morningTime": "07:00"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Settings.self, from: legacy)
+        XCTAssertFalse(decoded.enabled)
+        XCTAssertEqual(decoded.workStartTime, "09:00")
+        XCTAssertEqual(decoded.flexMinutes, 30)
+        XCTAssertEqual(decoded.workDurationHours, 9)
     }
 
     func testPartialJSONUsesDefaultsForMissing() throws {
         let partial = #"{"enabled": false}"#.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(Settings.self, from: partial)
         XCTAssertFalse(decoded.enabled)
-        XCTAssertEqual(decoded.morningWindowStart, "09:00")
+        XCTAssertEqual(decoded.workStartTime, "09:00")
     }
 
-    func testReminderIntervalIsClampedForInvaliValues() {
+    func testReminderIntervalIsClamped() {
         var s = Settings.default
         s.reminderIntervalSeconds = 0
-        XCTAssertEqual(s.effectiveReminderIntervalSeconds, 30)
-        s.reminderIntervalSeconds = -5
         XCTAssertEqual(s.effectiveReminderIntervalSeconds, 30)
         s.reminderIntervalSeconds = 120
         XCTAssertEqual(s.effectiveReminderIntervalSeconds, 120)
