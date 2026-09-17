@@ -6,12 +6,13 @@
 
 ## 功能特性
 
-- **时间窗口 + 全屏强提醒**：进入打卡窗口开始时间即弹出全屏遮罩（置顶、拦截退出快捷键），按可配置间隔（默认 2 分钟，1–60 分钟）重复重弹，直到完成对应打卡才停止。
-- **默认时间**：上班窗口 09:00–09:30，下班窗口 18:00–18:30（可在主窗口左侧「设置」中修改）。
+- **考勤规则驱动 + 全屏强提醒**：进入上班时间即弹出全屏遮罩（置顶、拦截退出快捷键），按可配置间隔（默认 2 分钟，1–60 分钟）重复重弹，直到完成对应打卡才停止。下班提醒时间随上班卡浮动：早到按上班时间算，晚打顺延。
+- **考勤参数**：上班时间 / 工作时长 / 弹性时间三参数配置（可在「设置 → 考勤规则」修改）。
+- **默认时间**：上班时间 09:00，工作时长 9 小时，弹性 30 分钟。
 - **工作日判断**：默认周一至周五，可多选；非工作日不提醒。
 - **今天不打卡（休假）**：一键跳过当天，跨天自动恢复。
 - **开机自启**：登录时若当天上班未打卡，会立即催打卡。
-- **定点拉起**：通过 `launchd` 在四个打卡时点自动拉起已在后台退出的应用（单实例）；已在运行时则跳过（不重复拉起、不弹主窗口）。
+- **定点拉起**：通过 `launchd` 在三个打卡时点自动拉起已在后台退出的应用（单实例）；已在运行时则跳过（不重复拉起、不弹主窗口）。
 - **系统事件响应**：休眠唤醒、系统时间/时区变更后立即重算提醒。
 - **数据容错**：写盘原子替换；JSON 损坏时自动备份并重建，菜单栏可见错误。
 - **打卡统计**：主窗口「统计」页展示四张指标卡（本月打卡 / 连续打卡 / 平均上班 / 缺卡）与最近 7 / 14 / 30 天每日上班时长柱状图。
@@ -58,7 +59,7 @@ xattr -dr com.apple.quarantine /Applications/Daka.app
 
 启动后应用同时出现在 Dock 与菜单栏，并打开主窗口：
 
-- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「打卡时间 / 工作日 / 考勤规则 / 系统与启动」四个子页分别配置，「打卡统计」页可切换「今天不打卡」。
+- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「考勤规则 / 工作日 / 系统与启动」三个子页分别配置，「打卡统计」页可切换「今天不打卡」。
 - 「打卡统计」页顶部为「今日打卡」：可对上班/下班**补卡**（选时间）、**改时间**、**删除**误点记录，仅限今天。
 - **关闭主窗口不退出应用**，应用继续在后台提醒；再次点 Dock 图标或菜单栏面板右上角的「控制中心」图标可重新打开。
 - 菜单栏图标两态：`checkmark.seal` 正常 / `exclamationmark.triangle.fill` 有待打卡。
@@ -85,12 +86,10 @@ xattr -dr com.apple.quarantine /Applications/Daka.app
   "settings": {
     "enabled": true,
     "workdays": [2, 3, 4, 5, 6],          // 2=周一 … 6=周五
-    "morningWindowStart": "09:00",
-    "morningDeadline": "09:30",
-    "eveningWindowStart": "18:00",
-    "eveningDeadline": "18:30",
-    "reminderIntervalSeconds": 120,
-    "minWorkDurationHours": 8
+    "workStartTime": "09:00",
+    "workDurationHours": 9,
+    "flexMinutes": 30,
+    "reminderIntervalSeconds": 120
   },
   "records": {
     "2026-09-14": {
@@ -133,13 +132,14 @@ xattr -dr com.apple.quarantine /Applications/Daka.app
 Sources/
   DakaCore/        # 纯逻辑，无 UI/IO 依赖，可单测
     Models.swift          数据模型（Settings / DayRecord）
+    AttendanceRule.swift  纯函数：由考勤参数推导有效上班 / 应下班 / 完成判定
     ScheduleEvaluator.swift 纯函数：计算待打卡任务
     Scheduler.swift       定时 tick，驱动提醒
     PunchStore.swift      持久化（原子写、损坏恢复）
     DakaClock.swift       可注入时钟
     Statistics.swift      统计口径
     PunchFeedback.swift   打卡未完成原因文案
-    DakaDate.swift / PunchRules.swift / PunchTarget.swift / ToolCatalog.swift 日期、打卡规则与工具目录
+    DakaDate.swift / PunchTarget.swift / ToolCatalog.swift 日期、打卡目标与工具目录
     HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
     LaunchAgentPlist.swift 定点拉起 plist 生成
   Daka/            # AppKit + SwiftUI 应用层
