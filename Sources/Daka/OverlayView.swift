@@ -8,6 +8,7 @@ final class OverlayModel: ObservableObject {
     @Published var now: Date = Date()
     @Published var message: String?
     @Published var healthAlerts: [HealthAlert] = []
+    @Published var record: DakaCore.DayRecord = .init()
     var onPunch: (PunchTask) -> Void = { _ in }
     var onWater: () -> Void = {}
     var onMovement: () -> Void = {}

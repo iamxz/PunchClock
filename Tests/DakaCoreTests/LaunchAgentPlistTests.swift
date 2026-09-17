@@ -10,13 +10,12 @@ final class LaunchAgentPlistTests: XCTestCase {
                               "/usr/bin/pgrep -u \"$(id -u)\" -x Daka >/dev/null 2>&1 || /usr/bin/open -b com.xue.daka --args --background"])
     }
 
-    func testFourCalendarTimes() throws {
+    func testThreeCalendarTimes() throws {
         let entries = try intervals(makePlist())
-        XCTAssertEqual(entries.count, 4)
+        XCTAssertEqual(entries.count, 3)
         XCTAssertTrue(entries.contains(["Hour": 9, "Minute": 0]))
         XCTAssertTrue(entries.contains(["Hour": 9, "Minute": 30]))
         XCTAssertTrue(entries.contains(["Hour": 18, "Minute": 0]))
-        XCTAssertTrue(entries.contains(["Hour": 18, "Minute": 30]))
     }
 
     func testNoRunAtLoad() throws {
@@ -24,8 +23,8 @@ final class LaunchAgentPlistTests: XCTestCase {
     }
 
     func testInvalidTimeStringsAreSkipped() throws {
-        let times = ["oops", "09:30", "18:00", "18:30"]
-        XCTAssertEqual(try intervals(LaunchAgentPlist.make(times: times, bundleID: "com.xue.daka")).count, 3)
+        let times = ["oops", "09:30", "18:00"]
+        XCTAssertEqual(try intervals(LaunchAgentPlist.make(times: times, bundleID: "com.xue.daka")).count, 2)
     }
 
     func testAllInvalidYieldsNoIntervalKey() throws {
@@ -43,7 +42,7 @@ final class LaunchAgentPlistTests: XCTestCase {
     // MARK: - Helpers
 
     private func makePlist() -> String {
-        LaunchAgentPlist.make(times: ["09:00", "09:30", "18:00", "18:30"],
+        LaunchAgentPlist.make(times: ["09:00", "09:30", "18:00"],
                               bundleID: "com.xue.daka")
     }
 

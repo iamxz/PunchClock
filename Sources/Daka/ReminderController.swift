@@ -55,7 +55,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         overlayModel.onMovement = action
     }
 
-    func showHard(tasks: [PunchTask], settings: DakaCore.Settings, now: Date) {
+    func showHard(tasks: [PunchTask], settings: DakaCore.Settings, record: DayRecord, now: Date) {
         snoozeTimer?.invalidate()
         snoozeTimer = nil
         isSnoozed = false
@@ -63,13 +63,15 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         currentTasks = tasks
         overlayModel.tasks = tasks
         overlayModel.settings = settings
+        overlayModel.record = record
         overlayModel.now = now
         reassertInterval = settings.effectiveReminderIntervalSeconds
         syncOverlay(activate: true)
     }
 
-    func refresh(settings: DakaCore.Settings, now: Date) {
+    func refresh(settings: DakaCore.Settings, record: DayRecord, now: Date) {
         overlayModel.settings = settings
+        overlayModel.record = record
         overlayModel.now = now
         let desired = settings.effectiveReminderIntervalSeconds
         if desired != reassertInterval {

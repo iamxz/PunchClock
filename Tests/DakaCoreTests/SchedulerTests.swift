@@ -6,8 +6,8 @@ final class SpyPresenter: ReminderPresenting {
     var hideCount = 0
     var refreshCount = 0
 
-    func showHard(tasks: [PunchTask], settings: Settings, now: Date) { lastHard = tasks }
-    func refresh(settings: Settings, now: Date) { refreshCount += 1 }
+    func showHard(tasks: [PunchTask], settings: Settings, record: DayRecord, now: Date) { lastHard = tasks }
+    func refresh(settings: Settings, record: DayRecord, now: Date) { refreshCount += 1 }
     func hide() { lastHard = nil; hideCount += 1 }
 }
 
@@ -106,6 +106,50 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(presenter.lastHard, [.morning])
 
         try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
+        scheduler.tick()
+        XCTAssertNil(presenter.lastHard)
+    }
+
+    func testMorningPunchedShowsEveningOnlyAtLeave() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 0))
+        try store.mark(.morning, at: TestTime.date(2026, 9, 14, 9, 0), calendar: TestTime.calendar)
+        clock.now = TestTime.date(2026, 9, 14, 17, 59)
+        scheduler.tick()
+        XCTAssertNil(presenter.lastHard)
+        clock.now = TestTime.date(2026, 9, 14, 18, 0)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.evening])
+    }
+
+    func testLatePunchPushesEveningReminder() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 9, 16))
+        try store.mark(.morning, at: TestTime.date(2026, 9, 14, 9, 16), calendar: TestTime.calendar)
+        clock.now = TestTime.date(2026, 9, 14, 18, 10)
+        scheduler.tick()
+        XCTAssertNil(presenter.lastHard)
+        clock.now = TestTime.date(2026, 9, 14, 18, 16)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.evening])
+    }
+
+    func testNoMorningNeverPresentsEvening() {
+        let (scheduler, _, _, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 20, 0))
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.morning])
+    }
+
+    func testEarlyEveningPunchKeepsReminding() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
+        try store.mark(.morning, at: TestTime.date(2026, 9, 14, 9, 0), calendar: TestTime.calendar)
+        try store.mark(.evening, at: TestTime.date(2026, 9, 14, 17, 30), calendar: TestTime.calendar)
+        scheduler.tick()
+        XCTAssertEqual(presenter.lastHard, [.evening])
+    }
+
+    func testQualifyingEveningPunchClearsReminder() throws {
+        let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
+        try store.mark(.morning, at: TestTime.date(2026, 9, 14, 9, 0), calendar: TestTime.calendar)
+        try store.mark(.evening, at: TestTime.date(2026, 9, 14, 18, 10), calendar: TestTime.calendar)
         scheduler.tick()
         XCTAssertNil(presenter.lastHard)
     }

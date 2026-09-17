@@ -1,8 +1,8 @@
 import Foundation
 
 public protocol ReminderPresenting: AnyObject {
-    func showHard(tasks: [PunchTask], settings: Settings, now: Date)
-    func refresh(settings: Settings, now: Date)
+    func showHard(tasks: [PunchTask], settings: Settings, record: DayRecord, now: Date)
+    func refresh(settings: Settings, record: DayRecord, now: Date)
     func hide()
 }
 
@@ -66,21 +66,21 @@ public final class Scheduler {
         let record = store.record(for: now, calendar: calendar)
         let pending = evaluator.pendingReminders(now: now, settings: settings, record: record,
                                                  calendar: calendar)
-        apply(state: ReminderState(pending: pending), settings: settings, now: now, dayChanged: dayChanged)
+        apply(state: ReminderState(pending: pending), settings: settings, record: record, now: now, dayChanged: dayChanged)
     }
 
-    private func apply(state newState: ReminderState, settings: Settings, now: Date, dayChanged: Bool) {
+    private func apply(state newState: ReminderState, settings: Settings, record: DayRecord, now: Date, dayChanged: Bool) {
         state = newState
         let changed = newState != lastState
         if changed {
             lastState = newState
             if !newState.pending.isEmpty {
-                presenter?.showHard(tasks: newState.pending, settings: settings, now: now)
+                presenter?.showHard(tasks: newState.pending, settings: settings, record: record, now: now)
             } else {
                 presenter?.hide()
             }
         } else if !newState.isEmpty {
-            presenter?.refresh(settings: settings, now: now)
+            presenter?.refresh(settings: settings, record: record, now: now)
         }
         if changed || dayChanged {
             onStateChange?(newState)
