@@ -21,11 +21,11 @@ struct MenuBarView: View {
             }
 
             PunchButton(task: PunchTarget.resolve(record: model.record,
-                                                  now: model.now,
-                                                  minWorkDuration: model.minWorkDuration),
+                                                   now: model.now,
+                                                   settings: model.settings),
                         record: model.record,
                         nowProvider: { model.now },
-                        minWorkDuration: model.minWorkDuration) { task in
+                        settings: model.settings) { task in
                 model.punch(task)
             }
         }

@@ -9,7 +9,7 @@ final class PunchFeedbackTests: XCTestCase {
                       punchedAt: Date,
                       minHours: Double = 8) -> String? {
         var settings = Settings.default
-        settings.minWorkDurationHours = minHours
+        settings.workDurationHours = minHours
         return PunchFeedback.text(task: task, record: record, settings: settings,
                                   punchedAt: punchedAt, calendar: cal)
     }
@@ -49,7 +49,7 @@ final class PunchFeedbackTests: XCTestCase {
         utc.timeZone = TimeZone(identifier: "UTC")!
 
         var settings = Settings.default
-        settings.minWorkDurationHours = 8
+        settings.workDurationHours = 8
         let morning = utc.date(from: DateComponents(year: 2026, month: 9, day: 14, hour: 1, minute: 0))!
         let evening = utc.date(from: DateComponents(year: 2026, month: 9, day: 14, hour: 8, minute: 0))!
         let record = DayRecord(morningPunches: [morning], eveningPunches: [evening])

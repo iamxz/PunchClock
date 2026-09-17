@@ -59,11 +59,9 @@ public enum Statistics {
                                rangeDays: Int,
                                calendar: Calendar = .current) -> StatisticsSummary {
         let range = max(1, rangeDays)
-        let eveningDeadlineToday = DakaDate.date(on: now, at: settings.eveningDeadline, calendar: calendar)
-        let minWork = settings.minWorkDuration
 
-        func completed(_ record: DayRecord) -> Bool {
-            record.morningDone && PunchRules.isEveningComplete(record, minWorkDuration: minWork)
+        func completed(_ record: DayRecord, on day: Date) -> Bool {
+            record.morningDone && AttendanceRule.isEveningComplete(record, settings: settings, on: day, calendar: calendar)
         }
 
         var days: [DailyStat] = []
@@ -77,8 +75,8 @@ public enum Statistics {
             let record = records[key] ?? DayRecord()
             let weekday = DakaDate.weekday(of: day, calendar: calendar)
             let isWorkday = settings.workdays.contains(weekday)
-            let completedBoth = completed(record)
-            let effectiveEvening = PunchRules.effectiveEveningPunch(record, minWorkDuration: minWork)
+            let completedBoth = completed(record, on: day)
+            let effectiveEvening = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: day, calendar: calendar)
 
             var duration: TimeInterval?
             if let morning = record.morningDoneAt, let evening = effectiveEvening, evening >= morning {
@@ -94,8 +92,13 @@ public enum Statistics {
 
             if isWorkday && !record.skipped && !completedBoth {
                 let isToday = calendar.isDate(day, inSameDayAs: now)
-                let expired = !isToday || (eveningDeadlineToday.map { now >= $0 } ?? false)
-                if expired { missed += 1 }
+                if isToday {
+                    let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: day, calendar: calendar)
+                    let expired = expectedLeave.map { now >= $0 } ?? false
+                    if expired { missed += 1 }
+                } else {
+                    missed += 1
+                }
             }
         }
 
@@ -105,7 +108,7 @@ public enum Statistics {
                 let key = DakaDate.key(for: day, calendar: calendar)
                 let record = records[key] ?? DayRecord()
                 let isWorkday = settings.workdays.contains(DakaDate.weekday(of: day, calendar: calendar))
-                if isWorkday && completed(record) {
+                if isWorkday && completed(record, on: day) {
                     monthPunch += 1
                 }
                 guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -117,10 +120,15 @@ public enum Statistics {
 
         let todayKey = DakaDate.key(for: now, calendar: calendar)
         let todayRecord = records[todayKey] ?? DayRecord()
-        let todayCompleted = completed(todayRecord)
+        let todayCompleted = completed(todayRecord, on: now)
         let todayIsWorkday = settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar))
-        let todayInProgress = todayIsWorkday && !todayRecord.skipped && !todayCompleted
-            && (eveningDeadlineToday.map { now < $0 } ?? true)
+        var todayInProgress = todayIsWorkday && !todayRecord.skipped && !todayCompleted
+        if todayInProgress {
+            let expectedLeave = AttendanceRule.expectedLeave(todayRecord, settings: settings, on: now, calendar: calendar)
+            if let leave = expectedLeave, now >= leave {
+                todayInProgress = false
+            }
+        }
 
         var cursor = calendar.startOfDay(for: now)
         if todayInProgress, let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor) {
@@ -132,7 +140,7 @@ public enum Statistics {
             let record = records[key] ?? DayRecord()
             let isWorkday = settings.workdays.contains(DakaDate.weekday(of: cursor, calendar: calendar))
             if isWorkday && !record.skipped {
-                if completed(record) {
+                if completed(record, on: cursor) {
                     streak += 1
                 } else {
                     break

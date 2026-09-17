@@ -6,17 +6,20 @@ public enum WorkProgress {
     /// 终点：若有合格下班卡取之（实际总时长），否则取 now。
     public static func elapsed(_ record: DayRecord,
                                now: Date,
-                               minWorkDuration: TimeInterval) -> TimeInterval? {
+                               settings: Settings,
+                               calendar: Calendar = .current) -> TimeInterval? {
         guard let morning = record.morningDoneAt else { return nil }
-        let end = PunchRules.effectiveEveningPunch(record, minWorkDuration: minWorkDuration) ?? now
+        let end = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: now, calendar: calendar) ?? now
         return max(0, end.timeIntervalSince(morning))
     }
 
     /// 圆环进度 0...1；未打上班卡为 0，最少工时为 0 时视为 1。
     public static func fraction(_ record: DayRecord,
                                 now: Date,
-                                minWorkDuration: TimeInterval) -> Double {
-        guard let elapsed = elapsed(record, now: now, minWorkDuration: minWorkDuration) else {
+                                settings: Settings,
+                                calendar: Calendar = .current) -> Double {
+        let minWorkDuration = settings.workDuration
+        guard let elapsed = elapsed(record, now: now, settings: settings, calendar: calendar) else {
             return 0
         }
         guard minWorkDuration > 0 else { return 1 }

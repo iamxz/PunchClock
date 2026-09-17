@@ -35,7 +35,7 @@ final class AppModel: ObservableObject {
     var minWorkDuration: TimeInterval { settings.minWorkDuration }
 
     var isEveningComplete: Bool {
-        PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration)
+        AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: .current)
     }
 
     func setMinWorkHours(_ hours: Double) {

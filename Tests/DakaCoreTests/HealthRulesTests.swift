@@ -6,8 +6,7 @@ final class HealthRulesTests: XCTestCase {
 
     private var schedule: Settings {
         Settings(enabled: true, workdays: [2, 3, 4, 5, 6],
-                 morningWindowStart: "09:00", morningDeadline: "09:30",
-                 eveningWindowStart: "18:00", eveningDeadline: "18:30")
+                 workStartTime: "09:00", workDurationHours: 9, flexMinutes: 30)
     }
 
     private func status(now: Date,
@@ -84,8 +83,7 @@ final class HealthRulesTests: XCTestCase {
 
     func testInvalidTimesInactive() {
         var s = schedule
-        s.morningWindowStart = "oops"
-        s.eveningDeadline = "oops"
+        s.workStartTime = "oops"
         let result = HealthRules.status(health: .default, schedule: s,
                                         record: DayHealthRecord(), skipped: false,
                                         now: TestTime.date(2026, 9, 14, 10, 30), calendar: cal)

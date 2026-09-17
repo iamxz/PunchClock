@@ -38,8 +38,8 @@ public enum HealthRules {
                               now: Date,
                               calendar: Calendar = .current) -> HealthStatus {
         let weekday = DakaDate.weekday(of: now, calendar: calendar)
-        let windowStart = DakaDate.date(on: now, at: schedule.morningWindowStart, calendar: calendar)
-        let windowEnd = DakaDate.date(on: now, at: schedule.eveningDeadline, calendar: calendar)
+        let windowStart = DakaDate.date(on: now, at: schedule.workStartTime, calendar: calendar)
+        let windowEnd = windowStart?.addingTimeInterval(schedule.workDuration)
 
         let inWindow: Bool
         if let start = windowStart, let end = windowEnd {

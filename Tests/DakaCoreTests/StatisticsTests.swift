@@ -34,12 +34,12 @@ final class StatisticsTests: XCTestCase {
     func testWorkDurationAndAverage() {
         let recs = records([
             (TestTime.date(2026, 9, 14), true, true, TestTime.date(2026, 9, 14, 9, 0), TestTime.date(2026, 9, 14, 18, 10), false),
-            (TestTime.date(2026, 9, 15), true, true, TestTime.date(2026, 9, 15, 9, 5), TestTime.date(2026, 9, 15, 18, 0), false)
+            (TestTime.date(2026, 9, 15), true, true, TestTime.date(2026, 9, 15, 9, 5), TestTime.date(2026, 9, 15, 18, 10), false)
         ])
         let s = Statistics.compute(records: recs, settings: .default, now: now, rangeDays: 7, calendar: cal)
         XCTAssertEqual(stat(s, "2026-09-14")?.workDuration, 33000)
-        XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 32100)
-        XCTAssertEqual(s.averageWorkDuration ?? 0, 32550, accuracy: 0.5)
+        XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 32700)
+        XCTAssertEqual(s.averageWorkDuration ?? 0, 32850, accuracy: 0.5)
     }
 
     func testEveningUnderMinimumDoesNotComplete() {
@@ -93,7 +93,7 @@ final class StatisticsTests: XCTestCase {
             (TestTime.date(2026, 9, 15), true, true, nil, nil, false)
         ])
         let s = Statistics.compute(records: recs, settings: .default, now: lateNow, rangeDays: 7, calendar: cal)
-        XCTAssertEqual(s.currentStreak, 0)
+        XCTAssertEqual(s.currentStreak, 1)
         XCTAssertTrue(s.missedDays >= 1)
     }
 

@@ -11,16 +11,22 @@ public enum PunchFeedback {
         case .morning:
             return nil
         case .evening:
-            if PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration) {
+            if AttendanceRule.isEveningComplete(record, settings: settings, on: punchedAt, calendar: calendar) {
                 return nil
             }
-            let hours = settings.minWorkDurationHours
+            let hours = settings.workDurationHours
             let time = timeText(punchedAt, calendar: calendar)
             guard let morning = record.morningDoneAt else {
                 return "已记录 \(time)；今天还没有上班打卡，需先打上班卡；下班需满 \(hoursText(hours)) 小时才算完成。"
             }
-            let need = morning.addingTimeInterval(settings.minWorkDuration)
-            let remaining = need.timeIntervalSince(punchedAt)
+            let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: punchedAt, calendar: calendar)
+            let remaining: TimeInterval
+            if let leave = expectedLeave {
+                remaining = leave.timeIntervalSince(punchedAt)
+            } else {
+                let need = morning.addingTimeInterval(settings.workDuration)
+                remaining = need.timeIntervalSince(punchedAt)
+            }
             return "已记录 \(time)；距上班满 \(hoursText(hours)) 小时还差 \(remainingText(remaining))，满后自动完成。"
         }
     }

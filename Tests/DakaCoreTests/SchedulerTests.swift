@@ -103,10 +103,10 @@ final class SchedulerTests: XCTestCase {
     func testMorningPunchedSwitchesToEvening() throws {
         let (scheduler, clock, store, presenter) = makeScheduler(now: TestTime.date(2026, 9, 14, 18, 10))
         scheduler.tick()
-        XCTAssertEqual(presenter.lastHard, [.morning, .evening])
+        XCTAssertEqual(presenter.lastHard, [.morning])
 
         try store.mark(.morning, at: clock.now, calendar: TestTime.calendar)
         scheduler.tick()
-        XCTAssertEqual(presenter.lastHard, [.evening])
+        XCTAssertNil(presenter.lastHard)
     }
 }
