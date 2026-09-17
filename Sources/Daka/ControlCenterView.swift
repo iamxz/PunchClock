@@ -63,8 +63,6 @@ struct ControlCenterView: View {
             ScheduleSettingsView(model: model)
         case .settings(.workdays):
             WorkdaySettingsView(model: model)
-        case .settings(.attendance):
-            AttendanceSettingsView(model: model)
         case .settings(.system):
             SystemSettingsView(model: model)
         }

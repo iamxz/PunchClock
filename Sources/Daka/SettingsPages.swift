@@ -26,24 +26,39 @@ struct ScheduleSettingsView: View {
             Toggle("启用提醒", isOn: Binding(get: { model.settings.enabled },
                                             set: { model.setEnabled($0) }))
 
+            Section("考勤规则") {
+                DatePicker("上班时间",
+                           selection: Binding(
+                            get: { settingsDateFrom(model.settings.workStartTime, now: model.now) },
+                            set: { model.updateWorkStart(settingsHHMM(from: $0)) }),
+                           displayedComponents: .hourAndMinute)
+                Stepper(value: Binding(get: { model.settings.flexMinutes },
+                                       set: { model.setFlexMinutes($0) }),
+                        in: 0...120, step: 5) {
+                    Text("弹性时间：\(model.settings.flexMinutes) 分钟")
+                }
+                Stepper(value: Binding(get: { model.settings.workDurationHours },
+                                       set: { model.setWorkDurationHours($0) }),
+                        in: 0.5...12, step: 0.5) {
+                    Text("工作时长：\(settingsHoursText(model.settings.workDurationHours)) 小时")
+                }
+                Text("下班提醒随上班卡时间浮动：早到按上班时间算，晚打顺延下班。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("重复提醒") {
                 Stepper(value: Binding(get: { Int(model.settings.reminderIntervalSeconds / 60) },
                                        set: { model.setReminderIntervalMinutes($0) }),
                         in: 1...60) {
                     Text("每隔 \(Int(model.settings.reminderIntervalSeconds / 60)) 分钟重复提醒")
                 }
-                Text("进入打卡窗口即全屏提醒，完成对应打卡后停止。窗口截止时间仅用于统计缺卡。")
+                Text("进入打卡窗口即全屏提醒，完成对应打卡后停止。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
-    }
-
-    private func bound(_ keyPath: KeyPath<DakaCore.Settings, String>,
-                       _ update: @escaping (String) -> Void) -> Binding<Date> {
-        Binding(get: { settingsDateFrom(model.settings[keyPath: keyPath], now: model.now) },
-                set: { update(settingsHHMM(from: $0)) })
     }
 }
 
@@ -71,33 +86,6 @@ struct WorkdaySettingsView: View {
                     if on { days.insert(value) } else { days.remove(value) }
                     model.setWorkdays(days)
                 })
-    }
-}
-
-struct AttendanceSettingsView: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Form {
-            Section("考勤规则") {
-                DatePicker("上班时间",
-                           selection: Binding(
-                            get: { settingsDateFrom(model.settings.workStartTime, now: model.now) },
-                            set: { model.updateWorkStart(settingsHHMM(from: $0)) }),
-                           displayedComponents: .hourAndMinute)
-                Stepper(value: Binding(get: { model.settings.workDurationHours },
-                                       set: { model.setWorkDurationHours($0) }),
-                        in: 1...12, step: 0.5) {
-                    Text("每日工时：\(settingsHoursText(model.settings.workDurationHours)) 小时")
-                }
-                Stepper(value: Binding(get: { model.settings.flexMinutes },
-                                       set: { model.setFlexMinutes($0) }),
-                        in: 0...120, step: 5) {
-                    Text("弹性下班：\(model.settings.flexMinutes) 分钟")
-                }
-            }
-        }
-        .formStyle(.grouped)
     }
 }
 
