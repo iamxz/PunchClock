@@ -12,24 +12,18 @@ public struct ScheduleEvaluator {
 
         var tasks: [PunchTask] = []
 
-        if pending(start: settings.morningWindowStart,
-                   done: record.morningDone,
-                   now: now,
-                   calendar: calendar) {
+        if let windowStart = AttendanceRule.windowStart(settings, on: now, calendar: calendar),
+           !record.morningDone,
+           now >= windowStart {
             tasks.append(.morning)
         }
-        if pending(start: settings.eveningWindowStart,
-                   done: PunchRules.isEveningComplete(record, minWorkDuration: settings.minWorkDuration),
-                   now: now,
-                   calendar: calendar) {
+
+        if let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: now, calendar: calendar),
+           !AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: calendar),
+           now >= expectedLeave {
             tasks.append(.evening)
         }
-        return tasks
-    }
 
-    private func pending(start: String, done: Bool, now: Date, calendar: Calendar) -> Bool {
-        guard !done else { return false }
-        guard let startDate = DakaDate.date(on: now, at: start, calendar: calendar) else { return false }
-        return now >= startDate
+        return tasks
     }
 }
