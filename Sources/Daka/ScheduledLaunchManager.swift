@@ -34,8 +34,9 @@ enum ScheduledLaunchManager {
         fmt.dateFormat = "HH:mm"
         let times: [String]
         if let start = fmt.date(from: settings.workStartTime) {
+            let flexEnd = start.addingTimeInterval(settings.flexDuration)
             let workEnd = start.addingTimeInterval(settings.workDuration)
-            times = [settings.workStartTime, fmt.string(from: workEnd)]
+            times = [settings.workStartTime, fmt.string(from: flexEnd), fmt.string(from: workEnd)]
         } else {
             times = []
         }

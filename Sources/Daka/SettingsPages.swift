@@ -80,10 +80,20 @@ struct AttendanceSettingsView: View {
     var body: some View {
         Form {
             Section("考勤规则") {
+                DatePicker("上班时间",
+                           selection: Binding(
+                            get: { settingsDateFrom(model.settings.workStartTime, now: model.now) },
+                            set: { model.updateWorkStart(settingsHHMM(from: $0)) }),
+                           displayedComponents: .hourAndMinute)
                 Stepper(value: Binding(get: { model.settings.workDurationHours },
                                        set: { model.setWorkDurationHours($0) }),
                         in: 1...12, step: 0.5) {
                     Text("每日工时：\(settingsHoursText(model.settings.workDurationHours)) 小时")
+                }
+                Stepper(value: Binding(get: { model.settings.flexMinutes },
+                                       set: { model.setFlexMinutes($0) }),
+                        in: 0...120, step: 5) {
+                    Text("弹性下班：\(model.settings.flexMinutes) 分钟")
                 }
             }
         }

@@ -42,6 +42,9 @@ final class AppModel: ObservableObject {
         updateSettings { $0.workDurationHours = hours }
     }
 
+    func updateWorkStart(_ hhmm: String) { updateSettings { $0.workStartTime = hhmm } }
+    func setFlexMinutes(_ minutes: Int) { updateSettings { $0.flexMinutes = max(0, minutes) } }
+
     private let store: PunchStore
     private let clock: AdjustableClock
     private var scheduler: Scheduler?
