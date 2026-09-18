@@ -1,5 +1,5 @@
-[![CI](https://github.com/xue/daka/actions/workflows/ci.yml/badge.svg)](https://github.com/xue/daka/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/xue/daka)](https://github.com/xue/daka/releases)
+[![CI](https://github.com/iamxz/PunchClock/actions/workflows/ci.yml/badge.svg)](https://github.com/iamxz/PunchClock/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/iamxz/PunchClock)](https://github.com/iamxz/PunchClock/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Daka
@@ -44,7 +44,17 @@ make clean     # 清理 .build 与 build
 
 ### 下载安装
 
-从 [GitHub Releases](https://github.com/xue/daka/releases) 下载最新版本的 `.pkg` 安装包。
+从 [GitHub Releases](https://github.com/iamxz/PunchClock/releases) 下载最新版本的 `.pkg` 安装包。
+
+校验包完整性：
+
+```sh
+shasum -a 256 -c checksums.txt
+```
+
+### 自动发版
+
+改 `Resources/Info.plist` 的 `CFBundleShortVersionString`（三段 `X.Y.Z`）并推到 `main`：CI 通过后自动打 `vX.Y.Z` 标签并发布 `.pkg` + `.app.zip` + `checksums.txt`。
 
 ### 分发安装包
 

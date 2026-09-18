@@ -4,7 +4,7 @@
 
 ## 报告 Bug
 
-如果您发现了 Bug，请通过 [GitHub Issues](https://github.com/xue/daka/issues) 报告，并使用 Bug 报告模板。
+如果您发现了 Bug，请通过 [GitHub Issues](https://github.com/iamxz/PunchClock/issues) 报告，并使用 Bug 报告模板。
 
 请包含以下信息：
 - 清晰的问题描述
@@ -15,7 +15,7 @@
 
 ## 提交功能建议
 
-我们欢迎新功能建议！请通过 [GitHub Issues](https://github.com/xue/daka/issues) 提交，并使用功能建议模板。
+我们欢迎新功能建议！请通过 [GitHub Issues](https://github.com/iamxz/PunchClock/issues) 提交，并使用功能建议模板。
 
 ## Pull Request
 

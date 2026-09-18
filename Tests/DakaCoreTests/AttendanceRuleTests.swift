@@ -71,6 +71,25 @@ final class AttendanceRuleTests: XCTestCase {
                        TestTime.date(2026, 9, 14, 19, 0))
     }
 
+    func testEffectiveEveningPunchUsesLatestQualifyingPunch() {
+        let record = DayRecord(
+            morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+            eveningPunches: [
+                TestTime.date(2026, 9, 14, 17, 0),
+                TestTime.date(2026, 9, 14, 18, 0)
+            ]
+        )
+
+        let result = AttendanceRule.effectiveEveningPunch(
+            record,
+            settings: .default,
+            on: TestTime.date(2026, 9, 14, 21, 0),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(result, TestTime.date(2026, 9, 14, 18, 0))
+    }
+
     func testCustomWorkDuration() {
         var s = Settings.default
         s.workDurationHours = 8
