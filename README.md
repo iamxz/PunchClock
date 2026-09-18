@@ -1,3 +1,7 @@
+[![CI](https://github.com/xue/daka/actions/workflows/ci.yml/badge.svg)](https://github.com/xue/daka/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/xue/daka)](https://github.com/xue/daka/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # Daka
 
 一个常规 macOS 本地打卡提醒应用（Dock 图标 + 主窗口 + 菜单栏项），在工作日提醒你完成 **上班 / 下班** 两次打卡。
@@ -37,6 +41,10 @@ make clean     # 清理 .build 与 build
 ```
 
 首次运行若需重新生成图标，先执行 `make icon`；`make app` / `make pkg` / `make install` 依赖 `Resources/Daka.icns` 已存在。
+
+### 下载安装
+
+从 [GitHub Releases](https://github.com/xue/daka/releases) 下载最新版本的 `.pkg` 安装包。
 
 ### 分发安装包
 
@@ -179,3 +187,7 @@ swift test
 - `docs/superpowers/specs/` — 设计规格（打卡规则、排期 v2、应用窗口与统计 v3）
 - `docs/superpowers/plans/` — 实现计划
 - `docs/verification.md` — 手动验证清单
+
+## 参与贡献
+
+我们欢迎各种形式的贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详情。
