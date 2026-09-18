@@ -52,6 +52,10 @@ make clean     # 清理 .build 与 build
 shasum -a 256 -c checksums.txt
 ```
 
+### 自动发版
+
+改 `Resources/Info.plist` 的 `CFBundleShortVersionString`（三段 `X.Y.Z`）并推到 `main`：CI 通过后自动打 `vX.Y.Z` 标签并发布 `.pkg` + `.app.zip` + `checksums.txt`。
+
 ### 分发安装包
 
 `make pkg` 产出的 `build/Daka-<版本>.pkg` 是 Universal 安装包，双击后自动把应用装到 `/Applications/Daka.app`。

@@ -38,7 +38,7 @@ jobs:
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
       - name: Skip if tag exists
         run: |
-          if git ls-remote --tags origin "refs/tags/${{ env.TAG }}" | grep -q "${{ env.TAG }}"; then
+          if git ls-remote --tags origin "refs/tags/${{ env.TAG }}" | grep -q "refs/tags/${{ env.TAG }}$"; then
             echo "Tag ${{ env.TAG }} already exists, skipping."
             echo "SKIP=true" >> "$GITHUB_ENV"
           fi
@@ -47,5 +47,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ env.TAG }}"
+          git rev-parse -q --verify "refs/tags/${{ env.TAG }}" >/dev/null || git tag "${{ env.TAG }}"
           git push origin "${{ env.TAG }}"

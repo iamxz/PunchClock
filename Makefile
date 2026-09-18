@@ -7,7 +7,7 @@ PKG_OUT    := build/$(APP_NAME)-$(PKG_VERSION).pkg
 UNIVERSAL  := --arch arm64 --arch x86_64
 INSTALL_DIR := /Applications
 
-.PHONY: build test icon app assemble pkg install clean
+.PHONY: build test icon app assemble pkg install clean verify-version dist
 
 build:
 	swift build -c release
@@ -55,8 +55,6 @@ install: app
 
 clean:
 	rm -rf .build build
-
-.PHONY: verify-version dist
 
 verify-version:
 	test -n "$(TAG)"

@@ -21,12 +21,13 @@ jobs:
       - name: Resolve tag name
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "TAG_NAME=${{ inputs.tag }}" >> "$GITHUB_ENV"
+            TAG="${{ inputs.tag }}"
           else
-            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+            TAG="${GITHUB_REF#refs/tags/}"
           fi
-          echo "Releasing $TAG_NAME"
-          echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || (echo "tag must match vX.Y.Z, got $TAG_NAME" >&2; exit 1)
+          echo "TAG_NAME=$TAG" >> "$GITHUB_ENV"
+          echo "Releasing $TAG"
+          echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || (echo "tag must match vX.Y.Z, got $TAG" >&2; exit 1)
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG_NAME }}
