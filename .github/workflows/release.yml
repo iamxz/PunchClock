@@ -1,5 +1,4 @@
 name: Release
-
 on:
   push:
     tags:
@@ -7,23 +6,52 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version tag (e.g., v1.0.0)'
+        description: 'Version tag to release (e.g., v1.0.2)'
         required: true
-
 permissions:
   contents: write
-
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: false
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
+      - name: Resolve tag name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          fi
+          echo "Releasing $TAG_NAME"
+          echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || (echo "tag must match vX.Y.Z, got $TAG_NAME" >&2; exit 1)
       - uses: actions/checkout@v7
-      
-      - name: Build Universal Binary
-        run: make pkg
-        
+        with:
+          ref: ${{ env.TAG_NAME }}
+          fetch-tags: true
+      - name: Select Xcode and show versions
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          xcodebuild -version || true
+          swift --version
+          sw_vers
+      - name: Verify tag matches Info.plist
+        run: make verify-version TAG="${{ env.TAG_NAME }}"
+      - name: Test
+        run: make test
+      - name: Build dist (pkg + zip + checksums)
+        run: make dist
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          files: build/Daka-*.pkg
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            build/Daka-*.pkg
+            build/Daka-*.app.zip
+            build/checksums.txt
           generate_release_notes: true
+          make_latest: true
+          fail_on_unmatched_files: true
+          draft: false
