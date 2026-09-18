@@ -5,3 +5,4 @@ Resources/AppIcon.iconset/
 .DS_Store
 *.xcodeproj
 .superpowers/
+docs/superpowers/
