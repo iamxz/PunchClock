@@ -55,3 +55,15 @@ install: app
 
 clean:
 	rm -rf .build build
+
+.PHONY: verify-version dist
+
+verify-version:
+	test -n "$(TAG)"
+	@[ "$(PKG_VERSION)" = "$(patsubst v%,%,$(TAG))" ] || (echo "version mismatch: Info.plist $(PKG_VERSION) vs TAG $(TAG)" >&2; exit 1)
+	@echo "version ok: $(PKG_VERSION) == $(TAG)"
+
+dist: pkg
+	ditto -c -k --keepParent "$(APP_BUNDLE)" "build/$(APP_NAME)-$(PKG_VERSION).app.zip"
+	shasum -a 256 "build/$(APP_NAME)-$(PKG_VERSION).pkg" "build/$(APP_NAME)-$(PKG_VERSION).app.zip" > "build/checksums.txt"
+	@echo "Built build/$(APP_NAME)-$(PKG_VERSION).app.zip and build/checksums.txt"
