@@ -14,6 +14,104 @@ final class OverlayModel: ObservableObject {
     var onMovement: () -> Void = {}
 }
 
+@MainActor
+final class OverlayPressModel: ObservableObject {
+    @Published var progress: CGFloat = 0
+    private var timer: Timer?
+    private var completed = false
+    private let duration: TimeInterval = 3
+
+    func start(onComplete: @escaping () -> Void) {
+        guard timer == nil, !completed else { return }
+        progress = 0
+        let steps = 60
+        var step = 0
+        let interval = duration / Double(steps)
+        let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { timer.invalidate(); return }
+                step += 1
+                self.progress = min(1, CGFloat(step) / CGFloat(steps))
+                if step >= steps {
+                    timer.invalidate()
+                    self.timer = nil
+                    self.completed = true
+                    self.progress = 1
+                    onComplete()
+                }
+            }
+        }
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
+    }
+
+    func cancel() {
+        timer?.invalidate()
+        timer = nil
+        completed = false
+        withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
+    }
+}
+
+struct OverlayPunchButton: View {
+    let task: PunchTask
+    let record: DayRecord
+    let now: Date
+    let settings: DakaCore.Settings
+    let onComplete: (PunchTask) -> Void
+
+    @StateObject private var press = OverlayPressModel()
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: press.progress > 0 ? press.progress : ringFraction)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: 2) {
+                    Text(task.title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .monospacedDigit()
+                    if press.progress > 0 {
+                        Text("\(Int(press.progress * 100))%")
+                            .font(.system(size: 14))
+                            .monospacedDigit()
+                    }
+                }
+                .foregroundStyle(tint)
+            }
+            .frame(width: 140, height: 140)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in press.start { onComplete(task) } }
+                    .onEnded { _ in press.cancel() }
+            )
+            if press.progress == 0 {
+                Text("长按打卡")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.gray)
+            }
+        }
+    }
+
+    private var isEveningComplete: Bool {
+        AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: .current)
+    }
+
+    private var ringFraction: CGFloat {
+        CGFloat(WorkProgress.fraction(record, now: now, settings: settings))
+    }
+
+    private var tint: Color {
+        if isEveningComplete { return .green }
+        return task == .morning ? .green : .blue
+    }
+}
+
 struct OverlayView: View {
     @ObservedObject var model: OverlayModel
 
@@ -37,22 +135,21 @@ struct OverlayView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 560)
                 }
-                ForEach(model.tasks, id: \.self) { task in
-                    VStack(spacing: 8) {
-                        Button {
-                            model.onPunch(task)
-                        } label: {
-                            Text(task.title)
-                                .font(.system(size: 26, weight: .semibold))
-                                .frame(width: 260, height: 64)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(task == .morning ? .green : .blue)
-
-                        if let overdue = overdueText(for: task) {
-                            Text(overdue)
-                                .font(.system(size: 18))
-                                .foregroundStyle(.orange)
+                HStack(spacing: 40) {
+                    ForEach(model.tasks, id: \.self) { task in
+                        VStack(spacing: 8) {
+                            OverlayPunchButton(
+                                task: task,
+                                record: model.record,
+                                now: model.now,
+                                settings: model.settings,
+                                onComplete: model.onPunch
+                            )
+                            if let overdue = overdueText(for: task) {
+                                Text(overdue)
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.orange)
+                            }
                         }
                     }
                 }
