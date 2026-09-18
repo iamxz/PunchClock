@@ -51,7 +51,15 @@ struct WaterToolView: View {
                         ForEach(summary.days, id: \.dateKey) { day in
                             BarMark(x: .value("日期", String(day.dateKey.suffix(5))),
                                     y: .value("杯", day.cups))
+                                .foregroundStyle(Color.blue.opacity(0.5))
+
+                            LineMark(x: .value("日期", String(day.dateKey.suffix(5))),
+                                     y: .value("杯", day.cups))
                                 .foregroundStyle(Color.blue)
+                                .lineStyle(StrokeStyle(lineWidth: 2))
+                                .symbol(Circle())
+                                .symbolSize(28)
+                                .interpolationMethod(.catmullRom)
                         }
                         RuleMark(y: .value("目标", model.healthSettings.waterGoalCups))
                             .foregroundStyle(.secondary)
@@ -143,7 +151,15 @@ struct MovementToolView: View {
                         ForEach(summary.days, id: \.dateKey) { day in
                             BarMark(x: .value("日期", String(day.dateKey.suffix(5))),
                                     y: .value("次", day.stands))
+                                .foregroundStyle(Color.green.opacity(0.5))
+
+                            LineMark(x: .value("日期", String(day.dateKey.suffix(5))),
+                                     y: .value("次", day.stands))
                                 .foregroundStyle(Color.green)
+                                .lineStyle(StrokeStyle(lineWidth: 2))
+                                .symbol(Circle())
+                                .symbolSize(28)
+                                .interpolationMethod(.catmullRom)
                         }
                         RuleMark(y: .value("目标", model.healthSettings.movementGoalCount))
                             .foregroundStyle(.secondary)

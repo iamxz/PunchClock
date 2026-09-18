@@ -44,7 +44,17 @@ struct StatisticsView: View {
                                 x: .value("日期", String(day.dateKey.suffix(5))),
                                 y: .value("小时", (day.workDuration ?? 0) / 3600)
                             )
+                            .foregroundStyle(Color.accentColor.opacity(0.5))
+
+                            LineMark(
+                                x: .value("日期", String(day.dateKey.suffix(5))),
+                                y: .value("小时", (day.workDuration ?? 0) / 3600)
+                            )
                             .foregroundStyle(Color.accentColor)
+                            .lineStyle(StrokeStyle(lineWidth: 2))
+                            .symbol(Circle())
+                            .symbolSize(30)
+                            .interpolationMethod(.catmullRom)
                         }
                         .chartYAxisLabel("小时")
                         .frame(height: 240)
