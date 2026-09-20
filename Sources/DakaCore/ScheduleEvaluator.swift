@@ -8,7 +8,7 @@ public struct ScheduleEvaluator {
                                  record: DayRecord,
                                  calendar: Calendar = .current) -> [PunchTask] {
         guard settings.enabled, !record.skipped else { return [] }
-        guard settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar)) else { return [] }
+        guard settings.isWorkday(now, calendar: calendar) else { return [] }
 
         var tasks: [PunchTask] = []
 

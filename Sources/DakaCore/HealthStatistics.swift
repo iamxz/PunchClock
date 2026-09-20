@@ -63,7 +63,7 @@ public enum HealthStatistics {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: now) else { continue }
             let key = DakaDate.key(for: day, calendar: calendar)
             let rec = records[key] ?? DayHealthRecord()
-            let isWorkday = schedule.workdays.contains(DakaDate.weekday(of: day, calendar: calendar))
+            let isWorkday = schedule.isWorkday(day, calendar: calendar)
             days.append(HealthDayStat(dateKey: key, cups: rec.cups,
                                       stands: rec.standCount, isWorkday: isWorkday))
             totalCups += rec.cups
@@ -98,7 +98,7 @@ public enum HealthStatistics {
         for _ in 0..<400 {
             let key = DakaDate.key(for: cursor, calendar: calendar)
             let rec = records[key] ?? DayHealthRecord()
-            let isWorkday = schedule.workdays.contains(DakaDate.weekday(of: cursor, calendar: calendar))
+            let isWorkday = schedule.isWorkday(cursor, calendar: calendar)
             if isWorkday {
                 let met = metric == .water
                     ? rec.cups >= settings.waterGoalCups
