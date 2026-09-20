@@ -10,7 +10,9 @@
 
 ## 预览
 
-![Daka 主窗口](screenshots/main.png)
+| 打卡统计 | 喝水 / 健康 |
+| --- | --- |
+| ![打卡统计](screenshots/main.png) | ![喝水与健康](screenshots/health.jpg) |
 
 ## 功能特性
 
@@ -196,12 +198,6 @@ swift test
 - 不做节假日日历，仅按星期判断，提供手动「今天不打卡」。
 - 定点拉起依赖 `launchd`，需要用户已登录且系统已唤醒；到点拉起在后台运行，不会弹出主窗口（已在运行时则跳过，不重复拉起、不弹主窗口）。
 - app 为 ad-hoc 签名、安装包未签名，且均未公证（无 Developer ID 证书）；分发给他人需按「分发安装包」一节放行 Gatekeeper。
-
-## 设计文档
-
-- `docs/superpowers/specs/` — 设计规格（打卡规则、排期 v2、应用窗口与统计 v3）
-- `docs/superpowers/plans/` — 实现计划
-- `docs/verification.md` — 手动验证清单
 
 ## 参与贡献
 
