@@ -65,11 +65,9 @@ final class AttendanceCalendarTests: XCTestCase {
         XCTAssertEqual(cell(g, day: 2)?.status, .done)
         XCTAssertEqual(cell(g, day: 3)?.status, .missed)
         XCTAssertEqual(cell(g, day: 4)?.status, .leave)
-        XCTAssertEqual(cell(g, day: 5)?.status, .missed)   // 周六工作日未打卡
-        XCTAssertEqual(cell(g, day: 6)?.status, .none)     // 周日
-        XCTAssertEqual(cell(g, day: 7)?.status, .none)     // 周一未来？否，9-7 已过去
-        // 9-7 周一已过去且未打卡 -> missed
-        XCTAssertEqual(cell(g, day: 7)?.status, .missed)
+        XCTAssertEqual(cell(g, day: 5)?.status, AttendanceStatus.none)     // 周六非工作日
+        XCTAssertEqual(cell(g, day: 6)?.status, AttendanceStatus.none)     // 周日非工作日
+        XCTAssertEqual(cell(g, day: 7)?.status, .missed)   // 周一已过去且未打卡 -> missed
     }
 
     func testPendingToday() {
@@ -84,8 +82,8 @@ final class AttendanceCalendarTests: XCTestCase {
         // 本月 9-11 之后为未来工作日 -> none（尚未到期，不标记缺卡）
         let now = TestTime.date(2026, 9, 10, 12, 0)
         let g = grid([:], now: now)
-        XCTAssertEqual(cell(g, day: 11)?.status, .none)
-        XCTAssertEqual(cell(g, day: 15)?.status, .none)
+        XCTAssertEqual(cell(g, day: 11)?.status, AttendanceStatus.none)
+        XCTAssertEqual(cell(g, day: 15)?.status, AttendanceStatus.none)
     }
 
     func testDoneCellCarriesTimes() {
