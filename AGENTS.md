@@ -21,7 +21,15 @@ open build/Daka.app
 
 - `swift test` — 运行单元测试（修改后必须通过）
 - `make build` — 编译 release 版本
-- `make app` — 编译 + 组装 app bundle
+- `make app` — 编译 + 组装 app bundle（**仅本地开发自测用，不要作为发布产物**）
+
+## 发布与打包（交给 GitHub CI）
+
+- **打包发布必须由 GitHub Actions 完成，不要自己本地打包出 release 产物**（不要依赖本地 `make app`/`make install` 的产物作为对外发布版本）。
+- 发版流程：改 `Resources/Info.plist` 版本号 → `git commit` → `git tag vX.Y.Z`（tag 必须与 `CFBundleShortVersionString` 一致，CI 的 `make verify-version` 会校验）→ `git push origin main && git push origin vX.Y.Z`。
+- 推送 tag 后，CI（`.github/workflows/release.yml`）会自动构建 `.pkg` / `.app.zip` / `checksums.txt` 并发布到 GitHub Release。
+- 本地只负责「提交 + 打 tag + 推送」，**不要**手动 `make install` 到 `/Applications` 当作发布，也不要把本地 `build/Daka.app` 当发布包分发。
+- 本地 `make app`/`open build/Daka.app` 仅用于开发期验证功能（如验证升级提醒逻辑），验证完即可，不代表完成发版。
 
 ## 代码规范
 
