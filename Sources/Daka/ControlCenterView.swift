@@ -82,8 +82,6 @@ struct ControlCenterView: View {
             MovementToolView(model: model)
         case .settings(.schedule):
             ScheduleSettingsView(model: model)
-        case .settings(.workdays):
-            WorkdaySettingsView(model: model)
         case .settings(.system):
             SystemSettingsView(model: model)
         case .settings(.about):

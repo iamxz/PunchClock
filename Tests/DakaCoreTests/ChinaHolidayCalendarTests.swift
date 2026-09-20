@@ -63,28 +63,4 @@ final class ChinaHolidayCalendarTests: XCTestCase {
         XCTAssertTrue(WorkdayCalendar().isWorkday(TestTime.date(2027, 1, 1), calendar: cal)) // 周五
         XCTAssertFalse(WorkdayCalendar().isWorkday(TestTime.date(2027, 1, 2), calendar: cal)) // 周六
     }
-
-    // MARK: - 手动微调覆盖
-
-    func testOverrideForcesHolidayToWorkday() {
-        var s = Settings.default
-        s.workdayOverrides = ["2026-02-15": true]
-        XCTAssertTrue(s.isWorkday(TestTime.date(2026, 2, 15), calendar: cal))
-        XCTAssertEqual(s.dayType(TestTime.date(2026, 2, 15), calendar: cal), .customWorkday)
-    }
-
-    func testOverrideForcesWorkdayToOff() {
-        var s = Settings.default
-        s.workdayOverrides = ["2026-09-14": false]
-        XCTAssertFalse(s.isWorkday(TestTime.date(2026, 9, 14), calendar: cal))
-        XCTAssertEqual(s.dayType(TestTime.date(2026, 9, 14), calendar: cal), .customOff)
-    }
-
-    func testOverridePersistsThroughRoundTrip() throws {
-        var s = Settings.default
-        s.workdayOverrides = ["2026-02-15": true, "2026-09-14": false]
-        let data = try JSONEncoder().encode(s)
-        let decoded = try JSONDecoder().decode(Settings.self, from: data)
-        XCTAssertEqual(decoded.workdayOverrides, s.workdayOverrides)
-    }
 }

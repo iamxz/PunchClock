@@ -31,16 +31,12 @@ public enum WorkdayDayType: Equatable, Sendable {
     case holiday(name: String)
     /// 调休补班（上班），携带说明。
     case makeupWorkday(name: String)
-    /// 用户手动强制为工作日。
-    case customWorkday
-    /// 用户手动强制为休息。
-    case customOff
 
     /// 该类型当天是否应上班。
     public var isWorkday: Bool {
         switch self {
-        case .workday, .makeupWorkday, .customWorkday: return true
-        case .weekend, .holiday, .customOff: return false
+        case .workday, .makeupWorkday: return true
+        case .weekend, .holiday: return false
         }
     }
 
@@ -51,16 +47,6 @@ public enum WorkdayDayType: Equatable, Sendable {
         case .weekend: return "休"
         case .holiday: return "休"
         case .makeupWorkday: return "班"
-        case .customWorkday: return "班"
-        case .customOff: return "休"
-        }
-    }
-
-    /// 是否为用户自定义覆盖。
-    public var isCustom: Bool {
-        switch self {
-        case .customWorkday, .customOff: return true
-        default: return false
         }
     }
 
@@ -76,25 +62,21 @@ public enum WorkdayDayType: Equatable, Sendable {
 /// 标准工作日日历引擎。
 ///
 /// 判定优先级：
-/// 1. 用户自定义覆盖（`overrides`）——最高优先级。
-/// 2. 内置中国法定节假日/调休（`chinaHolidays`）。
-/// 3. 基础星期模式（`baseWorkdays`，默认周一至周五）。
+/// 1. 内置中国法定节假日/调休（`chinaHolidays`）。
+/// 2. 基础星期模式（`baseWorkdays`，默认周一至周五）。
 public struct WorkdayCalendar: Sendable {
     public var baseWorkdays: Set<Int>
-    public var overrides: [String: Bool]
 
     /// 内置的中国法定节假日与调休数据（2025、2026 年，官方公布口径）。
     public static let chinaHolidays: [String: HolidayEntry] = ChinaHolidayCalendarBuilder.build()
 
-    public init(baseWorkdays: Set<Int> = [2, 3, 4, 5, 6], overrides: [String: Bool] = [:]) {
+    public init(baseWorkdays: Set<Int> = [2, 3, 4, 5, 6]) {
         self.baseWorkdays = baseWorkdays
-        self.overrides = overrides
     }
 
     /// 某天是否应上班。
     public func isWorkday(_ date: Date, calendar: Calendar = .current) -> Bool {
         let key = DakaDate.key(for: date, calendar: calendar)
-        if let forced = overrides[key] { return forced }
         if let entry = WorkdayCalendar.chinaHolidays[key] {
             return entry.kind == .makeup
         }
@@ -102,12 +84,9 @@ public struct WorkdayCalendar: Sendable {
         return baseWorkdays.contains(weekday)
     }
 
-    /// 某天的详细类型（含节假日/调休/自定义信息）。
+    /// 某天的详细类型（含节假日/调休信息）。
     public func dayType(_ date: Date, calendar: Calendar = .current) -> WorkdayDayType {
         let key = DakaDate.key(for: date, calendar: calendar)
-        if let forced = overrides[key] {
-            return forced ? .customWorkday : .customOff
-        }
         if let entry = WorkdayCalendar.chinaHolidays[key] {
             return entry.kind == .makeup
                 ? .makeupWorkday(name: entry.name)

@@ -298,16 +298,34 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func addPunch(_ task: PunchTask, at time: Date) {
+    /// 补一条打卡记录（可指定任意日期，供「补卡（遗漏）」使用）。
+    ///
+    /// 同一任务在 1 分钟内已有记录时直接忽略，避免误点造成重复刷屏。
+    /// - Returns: 是否真的写入了新记录。
+    @discardableResult
+    func addPunch(_ task: PunchTask, at time: Date) -> Bool {
         errorMessage = nil
+
+        let existing = store.record(for: time)
+        let punches = task == .morning ? existing.morningPunches : existing.eveningPunches
+        if punches.contains(where: { abs($0.timeIntervalSince(time)) < 60 }) {
+            return false
+        }
+
         do {
             try store.mark(task, at: time)
             refreshRecord()
             scheduler?.tick()
             reminder?.showMessage(nil)
+            return true
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
+            return false
         }
+    }
+
+    func clearError() {
+        errorMessage = nil
     }
 
     func updatePunch(_ task: PunchTask, index: Int, to time: Date) {
@@ -335,13 +353,37 @@ final class AppModel: ObservableObject {
     }
 
     func setSkipped(_ skipped: Bool) {
+        setSkipped(skipped, on: clock.now)
+    }
+
+    /// 设置某天为休假 / 取消休假（日历右键入口，可作用于今天与过去任意日期）。
+    func setSkipped(_ skipped: Bool, on day: Date) {
         errorMessage = nil
         do {
-            try store.setSkipped(skipped, on: clock.now)
+            try store.setSkipped(skipped, on: day)
             refreshRecord()
             scheduler?.tick()
         } catch {
             errorMessage = "保存失败：\(error.localizedDescription)"
+        }
+    }
+
+    /// 清除某天的全部打卡记录（日历右键入口）。
+    func clearPunches(on day: Date) {
+        errorMessage = nil
+        do {
+            let existing = store.record(for: day)
+            for index in existing.morningPunches.indices.reversed() {
+                try store.removePunch(.morning, at: index, on: day)
+            }
+            for index in existing.eveningPunches.indices.reversed() {
+                try store.removePunch(.evening, at: index, on: day)
+            }
+            refreshRecord()
+            scheduler?.tick()
+            reminder?.showMessage(nil)
+        } catch {
+            errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
     }
 
@@ -406,6 +448,12 @@ final class AppModel: ObservableObject {
                                      now: clock.now)
     }
 
+    /// 某天「合格下班卡」的下限时刻：上班卡 + 工作时长。没有上班卡时返回 nil。
+    func eveningThreshold(on day: Date) -> Date? {
+        guard let morning = store.record(for: day).morningDoneAt else { return nil }
+        return morning.addingTimeInterval(store.data.settings.workDuration)
+    }
+
     /// 当前连续打卡天数（跨月统计）。
     var currentStreak: Int {
         Statistics.compute(records: store.data.records,
@@ -416,39 +464,6 @@ final class AppModel: ObservableObject {
 
     func setWorkdays(_ days: Set<Int>) {
         updateSettings { $0.workdays = days }
-    }
-
-    /// 循环微调某天的工作日状态：默认 → 强制相反 → 强制还原 → 默认。
-    func cycleWorkdayOverride(for date: Date, calendar: Calendar = .current) {
-        let key = DakaDate.key(for: date, calendar: calendar)
-        updateSettings { settings in
-            var overrides = settings.workdayOverrides
-            let natural = WorkdayCalendar(baseWorkdays: settings.workdays, overrides: [:])
-                .isWorkday(date, calendar: calendar)
-            if let current = overrides[key] {
-                if current {
-                    overrides[key] = false
-                } else {
-                    overrides.removeValue(forKey: key)
-                }
-            } else {
-                overrides[key] = !natural
-            }
-            settings.workdayOverrides = overrides
-        }
-    }
-
-    /// 直接设置某天的微调（nil 表示清除，恢复默认）。
-    func setWorkdayOverride(_ dateKey: String, workday: Bool?) {
-        updateSettings { settings in
-            var overrides = settings.workdayOverrides
-            if let value = workday {
-                overrides[dateKey] = value
-            } else {
-                overrides.removeValue(forKey: dateKey)
-            }
-            settings.workdayOverrides = overrides
-        }
     }
 
     func confirmQuit() {
