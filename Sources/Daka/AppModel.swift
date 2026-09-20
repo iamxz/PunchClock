@@ -15,6 +15,14 @@ final class AppModel: ObservableObject {
     @Published var scheduledLaunchWarning: String?
     @Published var scheduledLaunchInstalled = false
 
+    // MARK: - 升级检测
+    @Published private(set) var updateResult: UpdateCheckResult?
+    @Published var updateCheckState: UpdateCheckState = .idle
+
+    enum UpdateCheckState: Equatable {
+        case idle, checking, upToDate, available, error
+    }
+
     var hasSettingsFeedback: Bool {
         errorMessage != nil || startupWarning != nil || scheduledLaunchWarning != nil
     }
@@ -151,6 +159,61 @@ final class AppModel: ObservableObject {
         }
 
         scheduler.start()
+
+        // 启动后后台检查一次 GitHub 是否有新版本（仅公开 API 版本号比较）。
+        checkForUpdates()
+    }
+
+    // MARK: - 升级检测
+
+    /// 检查 GitHub Releases 是否有新版本，结果写入 `updateResult` / `updateCheckState`。
+    func checkForUpdates() {
+        updateCheckState = .checking
+        UpdateChecker.shared.check { [weak self] result in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    switch result {
+                    case .success(let res):
+                        self.updateResult = res
+                        if res.isUpdateAvailable {
+                            self.updateCheckState = .available
+                            self.remindIfNeeded(res)
+                        } else {
+                            self.updateCheckState = .upToDate
+                        }
+                    case .failure:
+                        self.updateCheckState = .error
+                        self.updateResult = nil
+                    }
+                }
+            }
+        }
+    }
+
+    /// 前往 GitHub Releases 下载页（用户指定的下载地址）。
+    func openDownloadPage() {
+        NSWorkspace.shared.open(UpdateChecker.releasesURL)
+    }
+
+    /// 发现新版本时弹一次性提醒；同一版本仅提示一次（UserDefaults 去重）。
+    private func remindIfNeeded(_ res: UpdateCheckResult) {
+        // dev 环境下若读不到当前版本（非 .app 运行），不弹提醒，避免误报。
+        guard UpdateChecker.shared.currentVersion != nil else { return }
+        let key = "DakaShownUpdateVersion"
+        guard UserDefaults.standard.string(forKey: key) != res.latestTag else { return }
+        UserDefaults.standard.set(res.latestTag, forKey: key)
+
+        let alert = NSAlert()
+        alert.messageText = "发现新版本 \(res.latestVersion.description)"
+        alert.informativeText = "当前版本 \(res.currentVersion.description)。是否前往 GitHub 下载最新版本？"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "前往下载")
+        alert.addButton(withTitle: "稍后提醒")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            openDownloadPage()
+        }
     }
 
     func refreshRecord() {
@@ -334,6 +397,39 @@ final class AppModel: ObservableObject {
 
     func setWorkdays(_ days: Set<Int>) {
         updateSettings { $0.workdays = days }
+    }
+
+    /// 循环微调某天的工作日状态：默认 → 强制相反 → 强制还原 → 默认。
+    func cycleWorkdayOverride(for date: Date, calendar: Calendar = .current) {
+        let key = DakaDate.key(for: date, calendar: calendar)
+        updateSettings { settings in
+            var overrides = settings.workdayOverrides
+            let natural = WorkdayCalendar(baseWorkdays: settings.workdays, overrides: [:])
+                .isWorkday(date, calendar: calendar)
+            if let current = overrides[key] {
+                if current {
+                    overrides[key] = false
+                } else {
+                    overrides.removeValue(forKey: key)
+                }
+            } else {
+                overrides[key] = !natural
+            }
+            settings.workdayOverrides = overrides
+        }
+    }
+
+    /// 直接设置某天的微调（nil 表示清除，恢复默认）。
+    func setWorkdayOverride(_ dateKey: String, workday: Bool?) {
+        updateSettings { settings in
+            var overrides = settings.workdayOverrides
+            if let value = workday {
+                overrides[dateKey] = value
+            } else {
+                overrides.removeValue(forKey: dateKey)
+            }
+            settings.workdayOverrides = overrides
+        }
     }
 
     func confirmQuit() {

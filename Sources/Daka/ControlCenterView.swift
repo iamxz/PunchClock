@@ -86,6 +86,8 @@ struct ControlCenterView: View {
             WorkdaySettingsView(model: model)
         case .settings(.system):
             SystemSettingsView(model: model)
+        case .settings(.about):
+            AboutSettingsView(model: model)
         }
     }
 }
