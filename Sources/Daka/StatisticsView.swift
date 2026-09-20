@@ -1,71 +1,60 @@
 import SwiftUI
-import Charts
 import DakaCore
 
 struct StatisticsView: View {
     @ObservedObject var model: AppModel
-    @State private var rangeDays = 14
+    @State private var displayedMonth: Date
 
-    private var summary: StatisticsSummary {
-        model.statistics(rangeDays: rangeDays)
+    init(model: AppModel) {
+        self._model = ObservedObject(wrappedValue: model)
+        let cal = Calendar.current
+        let start = cal.date(from: cal.dateComponents([.year, .month], from: model.now)) ?? model.now
+        self._displayedMonth = State(initialValue: start)
+    }
+
+    /// 当前展示月份的考勤网格（统计区间：该月 1 号 ~ 月末）。
+    private var grid: MonthGrid {
+        model.attendanceMonthGrid(month: displayedMonth)
+    }
+
+    private var punchDays: Int {
+        grid.weeks.joined().compactMap { $0 }.filter { $0.status == .done }.count
+    }
+
+    private var missedDays: Int {
+        grid.weeks.joined().compactMap { $0 }.filter { $0.status == .missed }.count
+    }
+
+    private var averageWorkDuration: TimeInterval? {
+        let durations = grid.weeks.joined().compactMap { $0 }
+            .filter { $0.status == .done }
+            .compactMap { cell -> TimeInterval? in
+                guard let m = cell.morningDoneAt, let e = cell.eveningDoneAt, e >= m else { return nil }
+                return e.timeIntervalSince(m)
+            }
+        return durations.isEmpty ? nil : durations.reduce(0, +) / Double(durations.count)
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 12) {
-                    metricCard("本月打卡", "\(summary.monthPunchDays) 天", "calendar")
-                    metricCard("连续打卡", "\(summary.currentStreak) 天", "flame")
+                    metricCard("本月打卡", "\(punchDays) 天", "checkmark.circle")
+                    metricCard("连续打卡", "\(model.currentStreak) 天", "flame")
                     metricCard("平均上班", averageText, "clock")
-                    metricCard("缺卡", "\(summary.missedDays) 天", "exclamationmark.triangle")
+                    metricCard("缺卡", "\(missedDays) 天", "exclamationmark.triangle")
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("每日上班时长").font(.headline)
-                        Spacer()
-                        Picker("范围", selection: $rangeDays) {
-                            Text("7 天").tag(7)
-                            Text("14 天").tag(14)
-                            Text("30 天").tag(30)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 220)
-                    }
-
-                    let chartDays = summary.days.filter { $0.workDuration != nil }
-                    if chartDays.isEmpty {
-                        Text("还没有足够的打卡记录")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 220)
-                    } else {
-                        Chart(chartDays, id: \.dateKey) { day in
-                            BarMark(
-                                x: .value("日期", String(day.dateKey.suffix(5))),
-                                y: .value("小时", (day.workDuration ?? 0) / 3600)
-                            )
-                            .foregroundStyle(Color.accentColor.opacity(0.5))
-
-                            LineMark(
-                                x: .value("日期", String(day.dateKey.suffix(5))),
-                                y: .value("小时", (day.workDuration ?? 0) / 3600)
-                            )
-                            .foregroundStyle(Color.accentColor)
-                            .lineStyle(StrokeStyle(lineWidth: 2))
-                            .symbol(Circle())
-                            .symbolSize(30)
-                            .interpolationMethod(.catmullRom)
-                        }
-                        .chartYAxisLabel("小时")
-                        .frame(height: 240)
-                    }
-                }
+                CalendarView(displayedMonth: $displayedMonth,
+                             records: model.records,
+                             settings: model.settings,
+                             now: model.now)
             }
         }
     }
 
     private var averageText: String {
-        guard let average = summary.averageWorkDuration else { return "—" }
+        guard let average = averageWorkDuration else { return "—" }
         let hours = Int(average) / 3600
         let minutes = (Int(average) % 3600) / 60
         return "\(hours)h\(minutes)m"

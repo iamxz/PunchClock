@@ -395,6 +395,25 @@ final class AppModel: ObservableObject {
                            rangeDays: rangeDays)
     }
 
+    /// 全部打卡记录（只读），供日历等组件使用。
+    var records: [String: DayRecord] { store.data.records }
+
+    /// 某月的考勤日历网格（每月 1 号 ~ 月末）。
+    func attendanceMonthGrid(month: Date) -> MonthGrid {
+        AttendanceCalendar.monthGrid(records: store.data.records,
+                                     settings: store.data.settings,
+                                     month: month,
+                                     now: clock.now)
+    }
+
+    /// 当前连续打卡天数（跨月统计）。
+    var currentStreak: Int {
+        Statistics.compute(records: store.data.records,
+                           settings: store.data.settings,
+                           now: clock.now,
+                           rangeDays: 400).currentStreak
+    }
+
     func setWorkdays(_ days: Set<Int>) {
         updateSettings { $0.workdays = days }
     }
