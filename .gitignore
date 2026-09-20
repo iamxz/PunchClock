@@ -1,8 +1,51 @@
-.build/
-build/
-.swiftpm/
-Resources/AppIcon.iconset/
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
 *.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Build artifacts
+build/
+*.dmg
+*.pkg
+*.app
+
+# Distribution
+Resources/AppIcon.iconset/
+
+# Secrets / local config
+.env
+.env.*
+*.p12
+*.mobileprovision
+*.cer
+secrets/
+credentials/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# superpowers
 .superpowers/
 docs/superpowers/
