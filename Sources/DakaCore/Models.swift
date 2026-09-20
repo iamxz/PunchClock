@@ -27,6 +27,8 @@ public struct ReminderState: Equatable, Sendable {
 public struct Settings: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var workdays: Set<Int>
+    /// 用户手动微调的某天工作日状态（"yyyy-MM-dd" -> 是否上班）。覆盖内置节假日与基础星期。
+    public var workdayOverrides: [String: Bool]
     public var workStartTime: String
     public var workDurationHours: Double
     public var flexMinutes: Int
@@ -34,12 +36,14 @@ public struct Settings: Codable, Equatable, Sendable {
 
     public init(enabled: Bool = true,
                 workdays: Set<Int> = [2, 3, 4, 5, 6],
+                workdayOverrides: [String: Bool] = [:],
                 workStartTime: String = "09:00",
                 workDurationHours: Double = 9,
                 flexMinutes: Int = 30,
                 reminderIntervalSeconds: TimeInterval = 120) {
         self.enabled = enabled
         self.workdays = workdays
+        self.workdayOverrides = workdayOverrides
         self.workStartTime = workStartTime
         self.workDurationHours = workDurationHours
         self.flexMinutes = flexMinutes
@@ -57,7 +61,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public static let `default` = Settings()
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, workdays
+        case enabled, workdays, workdayOverrides
         case workStartTime, workDurationHours, flexMinutes
         // Legacy keys kept only for decoder migration
         case morningWindowStart, morningDeadline
@@ -72,6 +76,7 @@ public struct Settings: Codable, Equatable, Sendable {
 
         self.enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
         self.workdays = try c.decodeIfPresent(Set<Int>.self, forKey: .workdays) ?? d.workdays
+        self.workdayOverrides = try c.decodeIfPresent([String: Bool].self, forKey: .workdayOverrides) ?? d.workdayOverrides
         self.reminderIntervalSeconds = try c.decodeIfPresent(TimeInterval.self, forKey: .reminderIntervalSeconds) ?? d.reminderIntervalSeconds
 
         // Decode legacy keys for migration fallback
@@ -112,10 +117,28 @@ public struct Settings: Codable, Equatable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(enabled, forKey: .enabled)
         try c.encode(workdays, forKey: .workdays)
+        try c.encode(workdayOverrides, forKey: .workdayOverrides)
         try c.encode(workStartTime, forKey: .workStartTime)
         try c.encode(workDurationHours, forKey: .workDurationHours)
         try c.encode(flexMinutes, forKey: .flexMinutes)
         try c.encode(reminderIntervalSeconds, forKey: .reminderIntervalSeconds)
+    }
+
+    // MARK: - 标准工作日日历
+
+    /// 当前设置对应的标准工作日日历引擎（基础星期 + 内置节假日 + 手动微调）。
+    public var workdayCalendar: WorkdayCalendar {
+        WorkdayCalendar(baseWorkdays: workdays, overrides: workdayOverrides)
+    }
+
+    /// 某天是否应上班（考虑节假日/调休与手动微调）。
+    public func isWorkday(_ date: Date, calendar: Calendar = .current) -> Bool {
+        workdayCalendar.isWorkday(date, calendar: calendar)
+    }
+
+    /// 某天的详细类型（含节假日/调休/自定义信息）。
+    public func dayType(_ date: Date, calendar: Calendar = .current) -> WorkdayDayType {
+        workdayCalendar.dayType(date, calendar: calendar)
     }
 }
 

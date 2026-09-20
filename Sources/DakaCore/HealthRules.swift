@@ -37,7 +37,6 @@ public enum HealthRules {
                               skipped: Bool,
                               now: Date,
                               calendar: Calendar = .current) -> HealthStatus {
-        let weekday = DakaDate.weekday(of: now, calendar: calendar)
         let windowStart = DakaDate.date(on: now, at: schedule.workStartTime, calendar: calendar)
         let windowEnd = windowStart?.addingTimeInterval(schedule.workDuration)
 
@@ -51,7 +50,7 @@ public enum HealthRules {
 
         let active = schedule.enabled
             && !skipped
-            && schedule.workdays.contains(weekday)
+            && schedule.isWorkday(now, calendar: calendar)
             && inWindow
 
         let drinkBase = record.lastDrinkAt ?? windowStart ?? now

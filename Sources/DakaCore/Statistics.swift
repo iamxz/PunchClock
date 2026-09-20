@@ -74,7 +74,7 @@ public enum Statistics {
             let key = DakaDate.key(for: day, calendar: calendar)
             let record = records[key] ?? DayRecord()
             let weekday = DakaDate.weekday(of: day, calendar: calendar)
-            let isWorkday = settings.workdays.contains(weekday)
+            let isWorkday = settings.isWorkday(day, calendar: calendar)
             let completedBoth = completed(record, on: day)
             let effectiveEvening = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: day, calendar: calendar)
 
@@ -107,7 +107,7 @@ public enum Statistics {
             while day <= now {
                 let key = DakaDate.key(for: day, calendar: calendar)
                 let record = records[key] ?? DayRecord()
-                let isWorkday = settings.workdays.contains(DakaDate.weekday(of: day, calendar: calendar))
+                let isWorkday = settings.isWorkday(day, calendar: calendar)
                 if isWorkday && completed(record, on: day) {
                     monthPunch += 1
                 }
@@ -121,7 +121,7 @@ public enum Statistics {
         let todayKey = DakaDate.key(for: now, calendar: calendar)
         let todayRecord = records[todayKey] ?? DayRecord()
         let todayCompleted = completed(todayRecord, on: now)
-        let todayIsWorkday = settings.workdays.contains(DakaDate.weekday(of: now, calendar: calendar))
+        let todayIsWorkday = settings.isWorkday(now, calendar: calendar)
         var todayInProgress = todayIsWorkday && !todayRecord.skipped && !todayCompleted
         if todayInProgress {
             let expectedLeave = AttendanceRule.expectedLeave(todayRecord, settings: settings, on: now, calendar: calendar)
@@ -138,7 +138,7 @@ public enum Statistics {
         for _ in 0..<400 {
             let key = DakaDate.key(for: cursor, calendar: calendar)
             let record = records[key] ?? DayRecord()
-            let isWorkday = settings.workdays.contains(DakaDate.weekday(of: cursor, calendar: calendar))
+            let isWorkday = settings.isWorkday(cursor, calendar: calendar)
             if isWorkday && !record.skipped {
                 if completed(record, on: cursor) {
                     streak += 1
