@@ -1,4 +1,8 @@
 name: Release
+
+# 发布流程：以 tag 为发布单元
+#   1) 手动创建并推送 vX.Y.Z tag  -> 自动构建 .pkg 安装包并生成对应 Release
+#   2) workflow_dispatch 手动补发 -> 指定已有/新 tag 重新生成 Release（若存在则先删旧 release）
 on:
   push:
     tags:
@@ -6,15 +10,18 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version tag to release (e.g., v1.0.2)'
+        description: '要发布/补发的版本 tag（例如 v1.0.2）'
         required: true
+
 permissions:
   contents: write
+
 concurrency:
   group: release-${{ github.ref }}-${{ inputs.tag }}
   cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -28,22 +35,40 @@ jobs:
           echo "TAG_NAME=$TAG" >> "$GITHUB_ENV"
           echo "Releasing $TAG"
           echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || (echo "tag must match vX.Y.Z, got $TAG" >&2; exit 1)
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG_NAME }}
           fetch-tags: true
+
       - name: Select Xcode and show versions
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
           xcodebuild -version || true
           swift --version
           sw_vers
+
       - name: Verify tag matches Info.plist
         run: make verify-version TAG="${{ env.TAG_NAME }}"
+
       - name: Test
         run: make test
+
       - name: Build dist (pkg + zip + checksums)
         run: make dist
+
+      - name: Delete existing release when re-releasing (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ env.TAG_NAME }}" >/dev/null 2>&1; then
+            echo "Release for ${{ env.TAG_NAME }} already exists, deleting for re-release..."
+            gh release delete "${{ env.TAG_NAME }}" --yes
+          else
+            echo "No existing release for ${{ env.TAG_NAME }}, will create new."
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -53,6 +78,6 @@ jobs:
             build/Daka-*.app.zip
             build/checksums.txt
           generate_release_notes: true
-          make_latest: true
+          make_latest: ${{ github.event_name == 'push' }}
           fail_on_unmatched_files: true
           draft: false
