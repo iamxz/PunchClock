@@ -6,6 +6,8 @@ PKG_VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionSt
 PKG_OUT    := build/$(APP_NAME)-$(PKG_VERSION).pkg
 UNIVERSAL  := --arch arm64 --arch x86_64
 INSTALL_DIR := /Applications
+# 图标变体：spark（默认）/ bell / bell-ring / ring-check / check / clock
+ICON_VARIANT ?= spark
 
 .PHONY: build test icon app assemble pkg install clean verify-version dist
 
@@ -16,8 +18,12 @@ test:
 	swift test
 
 icon:
-	swift scripts/make-appicon.swift Resources/AppIcon.iconset
+	swift scripts/make-appicon.swift Resources/AppIcon.iconset $(ICON_VARIANT)
 	iconutil -c icns Resources/AppIcon.iconset -o Resources/Daka.icns
+
+# 生成全部图标变体的对比预览图（不覆盖正式图标）
+icon-preview:
+	swift scripts/make-appicon.swift --sheet build/appicon-variants.png
 
 app:
 	$(MAKE) assemble ARCHS=

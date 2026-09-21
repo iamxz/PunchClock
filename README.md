@@ -4,6 +4,8 @@
 
 # Daka
 
+<img src="screenshots/icon.png" width="112" alt="Daka 应用图标">
+
 一个常规 macOS 本地打卡提醒应用（Dock 图标 + 主窗口 + 菜单栏项），在工作日提醒你完成 **上班 / 下班** 两次打卡。
 
 打卡记录**纯本地保存**：不连接任何公司考勤系统、不访问网络、不打开网页、不执行外部脚本。
@@ -42,6 +44,7 @@
 make build     # 仅编译（release，本机架构）
 make test      # 运行单元测试
 make icon      # 由 Resources/AppIcon.iconset 生成 Daka.icns
+make icon-preview  # 生成全部图标变体的对比预览图（build/appicon-variants.png）
 make app       # 编译 + 组装并 ad-hoc 签名 build/Daka.app（本机架构）
 make pkg       # 编译 Universal（arm64 + x86_64）+ 组装 + 打成 build/Daka-<版本>.pkg
 make install   # 在 app 基础上安装到 /Applications/Daka.app
@@ -49,6 +52,16 @@ make clean     # 清理 .build 与 build
 ```
 
 首次运行若需重新生成图标，先执行 `make icon`；`make app` / `make pkg` / `make install` 依赖 `Resources/Daka.icns` 已存在。
+
+图标为扁平风格（纯色圆角方块 + 单个白色图形，无渐变/无阴影），脚本内置 6 种变体，可切换：
+
+```sh
+make icon                          # spark（默认）：四角星芒，助手感
+make icon ICON_VARIANT=bell        # 铃铛，突出"提醒"
+make icon ICON_VARIANT=bell-ring   # 圆环内铃铛
+make icon ICON_VARIANT=check       # 对勾   | ring-check 圈中勾 | clock 时钟
+make icon-preview                  # 生成全部变体的对比预览图
+```
 
 ### 下载安装
 
