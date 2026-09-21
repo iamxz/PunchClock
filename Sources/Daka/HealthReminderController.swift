@@ -1,11 +1,10 @@
 import Foundation
 import DakaCore
 
-/// 独立的健康提醒调度：按工作时段评估喝水/走动，到期以全屏强提示呈现。
+/// 独立的健康提醒调度：按工作时段评估喝水/走动，到期以 toast 弱提示呈现（不弹全屏）。
 @MainActor
 final class HealthReminderController {
-    /// 每次 tick 汇报当前到期的提醒集合（空数组表示全部已解决）。
-    /// 消费方据此持续刷新内容，是否重新激活窗口由消费方判断。
+    /// 每次 tick 汇报当前到期的提醒集合（空数组表示全部已解决），由消费方决定如何呈现。
     var onHealthAlerts: (([HealthAlert]) -> Void)?
     var onTick: (() -> Void)?
 
@@ -60,16 +59,16 @@ final class HealthReminderController {
             let every = TimeInterval(health.effectiveWaterIntervalMinutes * 60)
             let minutes = status.minutesSinceDrink ?? health.effectiveWaterIntervalMinutes
             alerts.append(HealthAlert(kind: .water,
-                                      title: "该喝水啦 💧",
-                                      body: "已经 \(minutes) 分钟没喝水了，起来接杯水吧。",
+                                      title: HealthCopy.title(.water),
+                                      body: HealthCopy.body(.water, minutes: minutes),
                                       repeatIntervalSeconds: every))
         }
         if status.movementDue {
             let every = TimeInterval(health.effectiveMovementIntervalMinutes * 60)
             let minutes = status.minutesSinceStand ?? health.effectiveMovementIntervalMinutes
             alerts.append(HealthAlert(kind: .movement,
-                                      title: "起来走两步 🚶",
-                                      body: "坐了 \(minutes) 分钟，活动一下肩颈和腿吧。",
+                                      title: HealthCopy.title(.movement),
+                                      body: HealthCopy.body(.movement, minutes: minutes),
                                       repeatIntervalSeconds: every))
         }
 

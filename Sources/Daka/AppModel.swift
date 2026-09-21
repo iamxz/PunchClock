@@ -94,8 +94,6 @@ final class AppModel: ObservableObject {
         let reminder = ReminderController(interval: settings.effectiveReminderIntervalSeconds) { [weak self] task in
             self?.punch(task)
         }
-        reminder.setWaterAction { [weak self] in self?.drinkWater() }
-        reminder.setMovementAction { [weak self] in self?.standUp() }
         self.reminder = reminder
 
         let scheduler = Scheduler(clock: clock, store: store, presenter: reminder,
@@ -114,7 +112,7 @@ final class AppModel: ObservableObject {
         healthReminder.onTick = { [weak self] in self?.refreshHealth() }
         healthReminder.onHealthAlerts = { [weak self] alerts in
             guard let self else { return }
-            self.reminder?.updateHealth(alerts, settings: self.settings, now: self.now)
+            self.presentHealthToasts(alerts)
         }
         self.healthReminder = healthReminder
         healthReminder.start()
@@ -155,6 +153,7 @@ final class AppModel: ObservableObject {
             MainActor.assumeIsolated {
                 self?.scheduler?.tick()
                 self?.healthReminder?.tick()
+                ToastCenter.shared.repositionIfNeeded()
             }
         }
 
@@ -234,6 +233,45 @@ final class AppModel: ObservableObject {
         healthSettings = healthStore.data.settings
     }
 
+    // MARK: - 健康提醒弱提示（toast）
+
+    /// 每个提醒种类上一次弹出 toast 的时间，用于忽略期内按重复间隔重弹。
+    private var lastHealthToastAt: [HealthAlert.Kind: Date] = [:]
+    /// 同一轮多种健康提醒之间的弹出间隔（秒）。
+    private static let healthToastStagger: TimeInterval = 2.6
+
+    /// 喝水/走动是唯一走 toast 弱提示的提醒：弹出数秒后自动消失，不抢焦点、不打断工作。
+    /// 到期未处理时，每个提醒种类按自身重复间隔（如喝水间隔 60 分钟）重弹一次。
+    private func presentHealthToasts(_ alerts: [HealthAlert]) {
+        let now = clock.now
+        var delay: TimeInterval = 0
+        for alert in alerts {
+            if let last = lastHealthToastAt[alert.kind],
+               now.timeIntervalSince(last) < alert.repeatIntervalSeconds {
+                continue
+            }
+            lastHealthToastAt[alert.kind] = now
+            let toast = ToastCenter.Toast(title: alert.title,
+                                          body: alert.body,
+                                          icon: HealthCopy.icon(alert.kind),
+                                          tint: HealthCopy.tint(alert.kind))
+            if delay == 0 {
+                ToastCenter.shared.show(toast)
+            } else {
+                // 两种提醒同时到期时错开依次弹出，避免后一张把前一张瞬间顶掉、来不及看。
+                let wait = delay
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(wait))
+                    ToastCenter.shared.show(toast)
+                }
+            }
+            delay += Self.healthToastStagger
+        }
+        // 已解决的提醒清掉节流记录，下次到期立刻弹出。
+        let active = Set(alerts.map(\.kind))
+        lastHealthToastAt = lastHealthToastAt.filter { active.contains($0.key) }
+    }
+
     func drinkWater() {
         do { try logHealth(.water) } catch {}
     }
@@ -289,10 +327,12 @@ final class AppModel: ObservableObject {
             try store.mark(task, at: clock.now)
             refreshRecord()
             scheduler?.tick()
-            reminder?.showMessage(PunchFeedback.text(task: task,
-                                                      record: record,
-                                                      settings: settings,
-                                                      punchedAt: clock.now))
+            // 全屏遮罩可能因任务完成而立即收起，打卡反馈改用 toast 呈现，保证可见。
+            let feedback = PunchFeedback.text(task: task,
+                                              record: record,
+                                              settings: settings,
+                                              punchedAt: clock.now)
+            ToastCenter.shared.show(ToastTemplate.punch(task: task, feedback: feedback))
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -316,7 +356,6 @@ final class AppModel: ObservableObject {
             try store.mark(task, at: time)
             refreshRecord()
             scheduler?.tick()
-            reminder?.showMessage(nil)
             return true
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
@@ -334,7 +373,6 @@ final class AppModel: ObservableObject {
             try store.updatePunch(task, at: index, to: time, on: clock.now)
             refreshRecord()
             scheduler?.tick()
-            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -346,7 +384,6 @@ final class AppModel: ObservableObject {
             try store.removePunch(task, at: index, on: clock.now)
             refreshRecord()
             scheduler?.tick()
-            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -381,7 +418,6 @@ final class AppModel: ObservableObject {
             }
             refreshRecord()
             scheduler?.tick()
-            reminder?.showMessage(nil)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }
@@ -466,16 +502,42 @@ final class AppModel: ObservableObject {
         updateSettings { $0.workdays = days }
     }
 
-    func confirmQuit() {
+    // MARK: - 退出
+
+    /// 退出影响说明（确认弹窗正文），按今日打卡状态生成。
+    var quitImpactText: String {
+        QuitPrompt.impactText(skipped: record.skipped,
+                              morningDone: record.morningDone,
+                              eveningDone: isEveningComplete)
+    }
+
+    /// 弹退出确认框，返回用户是否确认退出。
+    ///
+    /// 菜单/快捷键（Cmd+Q）与设置页「退出应用」共用同一条确认路径；
+    /// 系统关机、或已经确认过一次时直接返回 true，不重复打扰。
+    @discardableResult
+    func confirmQuit() -> Bool {
+        if allowTermination { return true }
         let alert = NSAlert()
-        alert.messageText = "退出 打工人爱护自己？"
-        alert.informativeText = "退出后将无法提醒打卡，直到下次开机或手动启动。"
+        alert.messageText = QuitPrompt.title
+        alert.informativeText = quitImpactText
         alert.alertStyle = .warning
         alert.addButton(withTitle: "取消")
         alert.addButton(withTitle: "仍要退出")
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        guard alert.runModal() == .alertSecondButtonReturn else { return false }
         allowTermination = true
+        return true
+    }
+
+    /// 设置页「退出应用」入口。
+    func quit() {
+        guard confirmQuit() else { return }
         NSApp.terminate(nil)
+    }
+
+    /// 系统退出请求（Cmd+Q、Dock 菜单等）的拦截点：确认后放行，取消则继续运行。
+    func shouldTerminate() -> NSApplication.TerminateReply {
+        confirmQuit() ? .terminateNow : .terminateCancel
     }
 }

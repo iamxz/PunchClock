@@ -85,7 +85,7 @@ struct SystemSettingsView: View {
             }
 
             Section("应用") {
-                Button("退出应用") { model.confirmQuit() }
+                Button("退出应用") { model.quit() }
             }
 
             if model.hasSettingsFeedback {

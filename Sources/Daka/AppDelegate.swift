@@ -54,7 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    /// 放行退出，但先弹确认框说明影响（退出后打卡提醒会停止）；取消则继续运行。
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        MainActor.assumeIsolated { AppModel.shared.allowTermination } ? .terminateNow : .terminateCancel
+        MainActor.assumeIsolated { AppModel.shared.shouldTerminate() }
     }
 }
