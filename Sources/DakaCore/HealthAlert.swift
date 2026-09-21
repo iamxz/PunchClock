@@ -1,6 +1,6 @@
 import Foundation
 
-/// 健康提醒内容（在全屏强提示里展示）。
+/// 健康提醒内容（只以 toast 弱提示展示，不进全屏遮罩；全屏遮罩仅承载考勤）。
 public struct HealthAlert: Identifiable, Equatable {
     public enum Kind: Equatable { case water, movement }
 

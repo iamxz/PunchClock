@@ -86,6 +86,8 @@ struct ControlCenterView: View {
             SystemSettingsView(model: model)
         case .settings(.about):
             AboutSettingsView(model: model)
+        case .settings(.debug):
+            DebugSettingsView(model: model)
         }
     }
 }

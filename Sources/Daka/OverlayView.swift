@@ -6,109 +6,45 @@ final class OverlayModel: ObservableObject {
     @Published var tasks: [PunchTask] = []
     @Published var settings: DakaCore.Settings = .default
     @Published var now: Date = Date()
-    @Published var message: String?
-    @Published var healthAlerts: [HealthAlert] = []
     @Published var record: DakaCore.DayRecord = .init()
     var onPunch: (PunchTask) -> Void = { _ in }
-    var onWater: () -> Void = {}
-    var onMovement: () -> Void = {}
 }
 
-@MainActor
-final class OverlayPressModel: ObservableObject {
-    @Published var progress: CGFloat = 0
-    private var timer: Timer?
-    private var completed = false
-    private let duration: TimeInterval = 3
-
-    func start(onComplete: @escaping () -> Void) {
-        guard timer == nil, !completed else { return }
-        progress = 0
-        let steps = 60
-        var step = 0
-        let interval = duration / Double(steps)
-        let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] timer in
-            MainActor.assumeIsolated {
-                guard let self else { timer.invalidate(); return }
-                step += 1
-                self.progress = min(1, CGFloat(step) / CGFloat(steps))
-                if step >= steps {
-                    timer.invalidate()
-                    self.timer = nil
-                    self.completed = true
-                    self.progress = 1
-                    onComplete()
-                }
-            }
-        }
-        RunLoop.main.add(newTimer, forMode: .common)
-        timer = newTimer
-    }
-
-    func cancel() {
-        timer?.invalidate()
-        timer = nil
-        completed = false
-        withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
-    }
-}
-
+/// 打卡按钮：纯点击触发。边框风格与菜单（.bordered 蓝色描边）保持一致，
+/// 在纯黑遮罩上用明确的蓝色描边保证可见。
 struct OverlayPunchButton: View {
     let task: PunchTask
-    let record: DayRecord
-    let now: Date
-    let settings: DakaCore.Settings
     let onComplete: (PunchTask) -> Void
 
-    @StateObject private var press = OverlayPressModel()
-
     var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .stroke(Color.secondary.opacity(0.2), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: press.progress > 0 ? press.progress : ringFraction)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 2) {
-                    Text(task.title)
-                        .font(.system(size: 18, weight: .semibold))
-                        .monospacedDigit()
-                    if press.progress > 0 {
-                        Text("\(Int(press.progress * 100))%")
-                            .font(.system(size: 14))
-                            .monospacedDigit()
-                    }
-                }
-                .foregroundStyle(tint)
-            }
-            .frame(width: 140, height: 140)
-            .contentShape(Circle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in press.start { onComplete(task) } }
-                    .onEnded { _ in press.cancel() }
-            )
-            if press.progress == 0 {
-                Text("长按打卡")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.gray)
-            }
+        Button {
+            onComplete(task)
+        } label: {
+            Text(task.title)
+                .font(.system(size: 20, weight: .semibold))
+                .frame(width: 200, height: 60)
         }
+        .buttonStyle(BorderedPunchButtonStyle())
     }
+}
 
-    private var isEveningComplete: Bool {
-        AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: .current)
-    }
-
-    private var ringFraction: CGFloat {
-        CGFloat(WorkProgress.fraction(record, now: now, settings: settings))
-    }
-
-    private var tint: Color {
-        if isEveningComplete { return .green }
-        return task == .morning ? .green : .blue
+/// 模仿菜单中 .bordered 的蓝色描边按钮，但用显式颜色，确保纯黑背景上始终可见。
+private struct BorderedPunchButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.blue.opacity(configuration.isPressed ? 0.30 : 0.14))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.blue.opacity(configuration.isPressed ? 1.0 : 0.6),
+                                  lineWidth: 1.5)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.7),
+                       value: configuration.isPressed)
     }
 }
 
@@ -118,96 +54,49 @@ struct OverlayView: View {
     var body: some View {
         ZStack {
             Color.black.opacity(0.96).ignoresSafeArea()
-            VStack(spacing: 26) {
-                Image(systemName: "alarm.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.yellow)
-                Text(promptTitle)
-                    .font(.system(size: 46, weight: .bold))
-                    .foregroundStyle(.white)
-                Text("当前时间 " + Self.timeFormatter.string(from: model.now))
-                    .font(.system(size: 22))
-                    .foregroundStyle(.gray)
-                if let message = model.message {
-                    Text(message)
-                        .font(.system(size: 18))
-                        .foregroundStyle(.orange)
+            // ScrollView 兜底：副屏/低分辨率屏放不下固定字号内容时改为可滚动，避免被裁切。
+            ScrollView {
+                VStack(spacing: 30) {
+                    Image(systemName: "alarm.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.yellow)
+                    Text(promptTitle)
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 560)
-                }
-                HStack(spacing: 40) {
-                    ForEach(model.tasks, id: \.self) { task in
-                        VStack(spacing: 8) {
+                        .minimumScaleFactor(0.6)
+                    Text("当前时间 " + Self.timeFormatter.string(from: model.now))
+                        .font(.system(size: 22))
+                        .foregroundStyle(.gray)
+                        .monospacedDigit()
+                    HStack(spacing: 48) {
+                        ForEach(model.tasks, id: \.self) { task in
                             OverlayPunchButton(
                                 task: task,
-                                record: model.record,
-                                now: model.now,
-                                settings: model.settings,
                                 onComplete: model.onPunch
                             )
-                            if let overdue = overdueText(for: task) {
-                                Text(overdue)
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(.orange)
-                            }
                         }
                     }
+                    Text("ESC 可暂停，过提醒间隔后重新弹出")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.gray)
                 }
-                ForEach(model.healthAlerts) { alert in
-                    VStack(spacing: 10) {
-                        Label(alert.title,
-                              systemImage: alert.kind == .water ? "drop.fill" : "figure.walk")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(.white)
-                        Text(alert.body)
-                            .font(.system(size: 20))
-                            .foregroundStyle(.yellow)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: 560)
-                        Button {
-                            if alert.kind == .water { model.onWater() } else { model.onMovement() }
-                        } label: {
-                            Text(alert.kind == .water ? "已喝水" : "已起身")
-                                .font(.system(size: 22, weight: .semibold))
-                                .frame(width: 240, height: 56)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(alert.kind == .water ? .blue : .green)
-                    }
-                }
-                Text("ESC 可暂停，过提醒间隔后重新弹出")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.gray)
+                .padding(48)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .preferredColorScheme(.dark)
     }
 
     private var promptTitle: String {
         switch model.tasks {
         case [.morning]: return "该上班打卡了"
         case [.evening]: return "该下班打卡了"
-        case []: return model.healthAlerts.isEmpty ? "打卡完成" : "健康提醒"
+        case []: return "打卡完成"
         default: return "还有打卡未完成"
         }
-    }
-
-    private func overdueText(for task: PunchTask) -> String? {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm"
-        guard let start = fmt.date(from: model.settings.workStartTime) else { return nil }
-        let endInterval = task == .morning
-            ? model.settings.workDuration
-            : model.settings.workDuration + model.settings.flexDuration
-        let due = start.addingTimeInterval(endInterval)
-        guard model.now > due else { return nil }
-        let seconds = Int(model.now.timeIntervalSince(due))
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        if hours > 0 {
-            return "已欠 \(hours) 小时 \(minutes) 分"
-        }
-        return "已欠 \(minutes) 分"
     }
 
     private static let timeFormatter: DateFormatter = {
