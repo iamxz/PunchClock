@@ -1,6 +1,8 @@
 APP_NAME   := Daka
+# bundle 目录名即 Finder/登录项显示名；可执行文件与 pkg/zip 产物仍用 Daka
+APP_BUNDLE_NAME := 小打卡
 BUNDLE_ID  := com.xue.daka
-APP_BUNDLE := build/$(APP_NAME).app
+APP_BUNDLE := build/$(APP_BUNDLE_NAME).app
 PKG_ROOT   := build/pkgroot
 PKG_VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
 PKG_OUT    := build/$(APP_NAME)-$(PKG_VERSION).pkg
@@ -44,7 +46,7 @@ pkg:
 	$(MAKE) assemble ARCHS="$(UNIVERSAL)"
 	rm -rf "$(PKG_ROOT)"
 	mkdir -p "$(PKG_ROOT)/Applications"
-	ditto "$(APP_BUNDLE)" "$(PKG_ROOT)/Applications/$(APP_NAME).app"
+	ditto "$(APP_BUNDLE)" "$(PKG_ROOT)/Applications/$(APP_BUNDLE_NAME).app"
 	pkgbuild --root "$(PKG_ROOT)" \
 	         --identifier "$(BUNDLE_ID)" \
 	         --version "$(PKG_VERSION)" \
@@ -53,11 +55,11 @@ pkg:
 	@echo "Built $(PKG_OUT)"
 
 install: app
-	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app.tmp"
-	ditto "$(APP_BUNDLE)" "$(INSTALL_DIR)/$(APP_NAME).app.tmp"
-	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
-	mv "$(INSTALL_DIR)/$(APP_NAME).app.tmp" "$(INSTALL_DIR)/$(APP_NAME).app"
-	@echo "Installed to $(INSTALL_DIR)/$(APP_NAME).app"
+	rm -rf "$(INSTALL_DIR)/$(APP_BUNDLE_NAME).app.tmp"
+	ditto "$(APP_BUNDLE)" "$(INSTALL_DIR)/$(APP_BUNDLE_NAME).app.tmp"
+	rm -rf "$(INSTALL_DIR)/$(APP_BUNDLE_NAME).app"
+	mv "$(INSTALL_DIR)/$(APP_BUNDLE_NAME).app.tmp" "$(INSTALL_DIR)/$(APP_BUNDLE_NAME).app"
+	@echo "Installed to $(INSTALL_DIR)/$(APP_BUNDLE_NAME).app"
 
 clean:
 	rm -rf .build build

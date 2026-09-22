@@ -45,9 +45,9 @@ make build     # 仅编译（release，本机架构）
 make test      # 运行单元测试
 make icon      # 由 Resources/AppIcon.iconset 生成 Daka.icns
 make icon-preview  # 生成全部图标变体的对比预览图（build/appicon-variants.png）
-make app       # 编译 + 组装并 ad-hoc 签名 build/Daka.app（本机架构）
+make app       # 编译 + 组装并 ad-hoc 签名 build/小打卡.app（本机架构）
 make pkg       # 编译 Universal（arm64 + x86_64）+ 组装 + 打成 build/Daka-<版本>.pkg
-make install   # 在 app 基础上安装到 /Applications/Daka.app
+make install   # 在 app 基础上安装到 /Applications/小打卡.app
 make clean     # 清理 .build 与 build
 ```
 
@@ -79,7 +79,7 @@ shasum -a 256 -c checksums.txt
 
 ### 分发安装包
 
-`make pkg` 产出的 `build/Daka-<版本>.pkg` 是 Universal 安装包，双击后自动把应用装到 `/Applications/Daka.app`。
+`make pkg` 产出的 `build/Daka-<版本>.pkg` 是 Universal 安装包，双击后自动把应用装到 `/Applications/小打卡.app`。
 
 app 为 **ad-hoc 签名**、安装包本身**未签名**，且均**未公证**，别人首次打开会被 Gatekeeper 拦截，需任选一种放行：
 
@@ -89,7 +89,7 @@ app 为 **ad-hoc 签名**、安装包本身**未签名**，且均**未公证**�
 若安装后启动仍提示已损坏/无法验证，可尝试：
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/Daka.app
+xattr -dr com.apple.quarantine /Applications/小打卡.app
 ```
 
 **安装前请先退出正在运行的应用**（主窗口「设置 → 系统与启动 → 退出应用」），否则安装器覆盖运行中的 app 可能失败。

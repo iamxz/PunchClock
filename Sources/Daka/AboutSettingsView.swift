@@ -12,7 +12,7 @@ struct AboutSettingsView: View {
         Form {
             Section("当前版本") {
                 HStack {
-                    Text("Daka · 打工人爱护自己")
+                    Text("小打卡")
                     Spacer()
                     Text(currentVersionText)
                         .foregroundStyle(.secondary)

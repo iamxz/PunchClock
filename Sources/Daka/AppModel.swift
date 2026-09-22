@@ -193,26 +193,21 @@ final class AppModel: ObservableObject {
 
     /// 前往 GitHub Releases 下载页（用户指定的下载地址）。
     func openDownloadPage() {
-        NSWorkspace.shared.open(UpdateChecker.releasesURL)
+        let ok = NSWorkspace.shared.open(UpdateChecker.releasesURL)
+        printLine("DakaDebug openDownloadPage result=\(ok)")
     }
 
-    /// 发现新版本时弹一次性提醒；同一版本仅提示一次（UserDefaults 去重）。
+    /// 发现新版本时用通用 toast 提示（常驻，点击打开 GitHub 下载页）。
     private func remindIfNeeded(_ res: UpdateCheckResult) {
         // dev 环境下若读不到当前版本（非 .app 运行），不弹提醒，避免误报。
         guard UpdateChecker.shared.currentVersion != nil else { return }
-        let key = "DakaShownUpdateVersion"
-        guard UserDefaults.standard.string(forKey: key) != res.latestTag else { return }
-        UserDefaults.standard.set(res.latestTag, forKey: key)
-
-        let alert = NSAlert()
-        alert.messageText = "发现新版本 \(res.latestVersion.description)"
-        alert.informativeText = "当前版本 \(res.currentVersion.description)。是否前往 GitHub 下载最新版本？"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "前往下载")
-        alert.addButton(withTitle: "稍后提醒")
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn {
-            openDownloadPage()
+        let toast = ToastCenter.Toast(title: "发现新版本 \(res.latestVersion.description)",
+                                      body: "当前版本 \(res.currentVersion.description)，点击查看下载地址。",
+                                      icon: "arrow.down.circle.fill",
+                                      tint: ToastPalette.water)
+        ToastCenter.shared.show(toast) { [weak self] in
+            printLine("DakaDebug update toast action fired")
+            self?.openDownloadPage()
         }
     }
 
@@ -241,7 +236,7 @@ final class AppModel: ObservableObject {
     /// 同一轮多种健康提醒之间的弹出间隔（秒）。
     private static let healthToastStagger: TimeInterval = 2.6
 
-    /// 喝水/走动是唯一走 toast 弱提示的提醒：弹出数秒后自动消失，不抢焦点、不打断工作。
+    /// 喝水/走动是唯一走 toast 弱提示的提醒：卡片常驻右上角，点击即收起，不抢焦点、不打断工作。
     /// 到期未处理时，每个提醒种类按自身重复间隔（如喝水间隔 60 分钟）重弹一次。
     private func presentHealthToasts(_ alerts: [HealthAlert]) {
         let now = clock.now
@@ -333,7 +328,8 @@ final class AppModel: ObservableObject {
                                               record: record,
                                               settings: settings,
                                               punchedAt: clock.now)
-            ToastCenter.shared.show(ToastTemplate.punch(task: task, feedback: feedback))
+            // 打卡结果是纯操作反馈，6 秒自动收起。
+            ToastCenter.shared.show(ToastTemplate.punch(task: task, feedback: feedback), duration: 6)
         } catch {
             errorMessage = "打卡记录写入失败：\(error.localizedDescription)"
         }

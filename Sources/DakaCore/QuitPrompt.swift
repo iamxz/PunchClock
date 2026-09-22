@@ -5,7 +5,7 @@ import Foundation
 /// 退出后打卡提醒会停止，属于有副作用的操作，因此把「退出影响」的说明集中在 Core 里，
 /// 便于单测覆盖，也避免 UI 层随手改文案导致提醒丢失而不自知。
 public enum QuitPrompt {
-    public static let title = "确定要退出「打工人爱护自己」吗？"
+    public static let title = "确定要退出「小打卡」吗？"
 
     /// 退出影响说明：按今日打卡状态给出对应提示。
     /// - Parameters:

@@ -1,21 +1,32 @@
 import AppKit
 import SwiftUI
 
-/// 通用 toast 弱提示：模仿微信消息提示的深色圆角卡片，浮在所在屏右上角，停留数秒后自动淡出。
-/// 不抢焦点、不打断输入；多条提示会像微信一样层叠（新的从右侧滑入插到最上，旧的被顶下去）。
+/// 临时调试日志：直写 stderr 并即时可见（stdout 重定向到文件时是全缓冲的）。
+func printLine(_ line: String) {
+    FileHandle.standardError.write(Data((line + "\n").utf8))
+}
+
+/// 通用 toast 提示：模仿微信通知的深色圆角卡片，浮在所在屏右上角，不抢焦点、不打断输入。
+/// 多条提示像微信旧版通知那样堆叠：**最新的往下排**、完整展示在最下面，
+/// 旧的往上叠、只露出顶部一条；点击任意卡片即收起该卡片。
+///
+/// 消失策略按语义分级：
+/// - 纯操作反馈（保存成功、失败、打卡结果）传 `duration`，几秒后自动收起；
+/// - 需要用户明确知晓并处理的（喝水、走动）不传时长，常驻到点击为止；
+/// - 需要后续动作的（升级提示）同样常驻，点击卡片执行动作（如打开下载页）后收起。
 ///
 /// 动画分工（关键：窗口不动，卡片自己动）：
 /// - 窗口只负责「按卡片数量撑到对应高度 + 上屏 / 下屏」，动画期间窗口尺寸不变；
 /// - 卡片入场从窗口右边界外滑入，出场右移淡出，被顶下去的位移同样是 spring 插值，
 ///   全部在窗口内由 Core Animation 完成。相比直接动画窗口 frame（走窗口服务器、容易抖动掉帧），
 ///   这种方式更跟手；
-/// - 卡片高度统一，所以卡片数量一确定窗口高度就是已知值，可以先撑开窗口再播动画，
+/// - 卡片高度与露出量固定，所以卡片数量一确定窗口高度就是已知值，可以先撑开窗口再播动画，
 ///   避免滑入 / 下移过程中被窗口边界裁掉。
 @MainActor
 final class ToastCenter {
     struct Toast: Equatable, Identifiable {
-        /// 每次展示的唯一标识：文案相同也会重新播放入场动画。
-        let uid = UUID()
+        /// 每次展示的唯一标识。show 时会重新发号，模板实例反复展示也互不干扰。
+        var uid = UUID()
         var title: String
         var body: String
         var icon: String
@@ -35,7 +46,8 @@ final class ToastCenter {
         static let cardWidth: CGFloat = 340
         /// 统一卡片高度：正文 1 行时内容居中留白，比高度忽高忽低更整齐，也让窗口高度可精确预判。
         static let cardHeight: CGFloat = 76
-        static let cardSpacing: CGFloat = 8
+        /// 堆叠时上一张卡片底边露出下一张的高度（微信式压叠）。
+        static let cardPeek: CGFloat = 14
         static let sideInset: CGFloat = 12
         static let topInset: CGFloat = 8
         static let bottomInset: CGFloat = 8
@@ -43,8 +55,8 @@ final class ToastCenter {
         static func panelSize(cards: Int) -> CGSize {
             let count = max(1, cards)
             let height = topInset
-                + CGFloat(count) * cardHeight
-                + CGFloat(count - 1) * cardSpacing
+                + cardHeight
+                + CGFloat(count - 1) * cardPeek
                 + bottomInset
             return CGSize(width: cardWidth + sideInset * 2, height: height)
         }
@@ -57,10 +69,8 @@ final class ToastCenter {
 
     static let shared = ToastCenter()
 
-    /// 常规停留时长：喝水/走动等弱提示默认 4 秒。
-    private let displayDuration: TimeInterval = 4
     /// 同时最多展示几张卡，超出时挤掉最早的一条。
-    private static let maxVisible = 3
+    private static let maxVisible = 4
     /// 层叠动画：新卡滑入、旧卡被顶下去。
     private static let stackSpring = Animation.spring(response: 0.40, dampingFraction: 0.84)
     /// 收尾动画：最后一张淡出。
@@ -72,19 +82,25 @@ final class ToastCenter {
 
     private let model = ToastModel()
     private var panel: NSPanel?
-    /// 每张卡各自的自动收起定时器与截止时间（按 uid 索引）。
+    /// 自动收起卡片的定时器与截止时间（按 uid 索引；常驻卡片没有条目）。
     private var timers: [UUID: Timer] = [:]
     private var deadlines: [UUID: Date] = [:]
+    /// 卡片自带的点击动作（按 uid 索引）：点击卡片先执行动作再收起。
+    private var actions: [UUID: () -> Void] = [:]
     /// 悬停期间暂存的剩余时长：悬停暂停倒计时，移开后接着走完。
     private var paused: [UUID: TimeInterval] = [:]
     private var isHovering = false
 
     // MARK: - 对外接口
 
-    func show(_ toast: Toast, duration: TimeInterval? = nil) {
+    /// 展示一张卡片。`duration` 为 nil（默认）时常驻到点击收起；
+    /// 纯操作反馈类传时长（如 6 秒）自动消失。
+    func show(_ toast: Toast, duration: TimeInterval? = nil, action: (() -> Void)? = nil) {
         let panel = ensurePanel()
-        let seconds = duration ?? displayDuration
         let isFirst = model.toasts.isEmpty
+        // 每次展示都是独立卡片：重新发 uid，复用同一个模板实例也不会原位覆盖。
+        var toast = toast
+        toast.uid = UUID()
 
         var stack = model.toasts
         stack.insert(toast, at: 0)
@@ -102,12 +118,22 @@ final class ToastCenter {
             panel.alphaValue = 1
             panel.orderFrontRegardless()
         }
+        if let action { actions[toast.uid] = action }
         withAnimation(Self.stackSpring) { model.toasts = stack }
-        scheduleTimer(for: toast.uid, seconds: seconds)
+        printLine("DakaDebug toast shown uid=\(toast.uid) actionRegistered=\(action != nil)")
+        if let duration {
+            scheduleTimer(for: toast.uid, seconds: duration)
+        }
     }
 
-    /// 收起指定卡片（点击卡片本身）。
+    /// 收起指定卡片（点击卡片本身）；带点击动作的先执行动作。
     func dismiss(_ uid: UUID) {
+        printLine("DakaDebug dismiss tapped uid=\(uid) hasAction=\(actions[uid] != nil)")
+        if let action = actions.removeValue(forKey: uid) {
+            action()
+        } else {
+            printLine("DakaDebug dismiss: no action for uid=\(uid)")
+        }
         removeToast(uid)
     }
 
@@ -115,11 +141,12 @@ final class ToastCenter {
     func dismiss() {
         guard !model.toasts.isEmpty else { return }
         for toast in model.toasts { cancelTimer(toast.uid) }
+        actions.removeAll()
         withAnimation(Self.closeEase) { model.toasts = [] }
         hidePanelWhenEmpty()
     }
 
-    /// 悬停时暂停倒计时，移开后接着走完——给用户留出看完长文案的时间。
+    /// 悬停时暂停自动收起的倒计时，移开后接着走完——给用户留出看完长文案的时间。
     func setHovering(_ hovering: Bool) {
         guard isHovering != hovering else { return }
         isHovering = hovering
@@ -225,6 +252,7 @@ final class ToastCenter {
         timers[uid] = nil
         deadlines[uid] = nil
         paused[uid] = nil
+        actions[uid] = nil
     }
 
     private func removeToast(_ uid: UUID) {
@@ -266,22 +294,37 @@ final class ToastModel: ObservableObject {
     @Published var toasts: [ToastCenter.Toast] = []
 }
 
-/// 窗口内容：自上而下的一叠卡片。窗口本身不动，位置动画全由卡片自己完成。
+/// 窗口内容：自上而下压叠的一叠卡片。窗口本身不动，位置动画全由卡片自己完成。
 struct ToastView: View {
     @ObservedObject var model: ToastModel
     var onHover: (Bool) -> Void
     var onTap: (UUID) -> Void
 
     var body: some View {
-        VStack(spacing: ToastCenter.Metrics.cardSpacing) {
-            ForEach(model.toasts) { toast in
+        ZStack(alignment: .top) {
+            // ForEach 顺序保持与数组一致（索引 0 = 最新）：增删卡片时 SwiftUI 只做单卡
+            // 插入/移除动画，其余卡片平滑换位；若改成 reversed() 会被识别成整批重排，
+            // 转场和位移动画互相打架（≥3 张时表现为跳动错乱）。层叠前后关系交给 zIndex。
+            ForEach(Array(model.toasts.enumerated()), id: \.element.uid) { index, toast in
+                // 越新越靠下（slot 越大），最新一张完整展示在最下面，旧的往上叠只露一条。
+                let slot = model.toasts.count - 1 - index
                 ToastCard(toast: toast, onTap: { onTap(toast.uid) })
+                    // 卡片全不透明；压在下面的卡片盖一层半透明黑模拟「被盖住的暗度」。
+                    // 必须在 padding 之前叠（overlay 会铺满 padding 区域，否则留白处透出桌面）；
+                    // 用恒定视图 + 可动画 opacity，避免 if 条件切换导致明暗瞬间跳变。
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.black)
+                            .opacity(index == 0 ? 0 : 0.28)
+                    )
+                    .padding(.top, ToastCenter.Metrics.topInset
+                                     + CGFloat(slot) * ToastCenter.Metrics.cardPeek)
+                    .zIndex(Double(-index))
                     .transition(.asymmetric(
                         insertion: .offset(x: ToastCenter.Metrics.enterOffset).combined(with: .opacity),
                         removal: .offset(x: ToastCenter.Metrics.exitOffset).combined(with: .opacity)))
             }
         }
-        .padding(.top, ToastCenter.Metrics.topInset)
         .onHover(perform: onHover)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }

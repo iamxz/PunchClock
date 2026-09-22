@@ -17,7 +17,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
                                    styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                    backing: .buffered,
                                    defer: false)
-            created.title = "打工人爱护自己"
+            created.title = "小打卡"
             let toolbar = NSToolbar(identifier: "MainWindowToolbar")
             toolbar.displayMode = .iconOnly
             created.toolbar = toolbar
