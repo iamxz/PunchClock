@@ -31,19 +31,27 @@ public struct Settings: Codable, Equatable, Sendable {
     public var workDurationHours: Double
     public var flexMinutes: Int
     public var reminderIntervalSeconds: TimeInterval
+    /// 开机自启（登录项）的开关，关闭后重启应用不会再自动注册。
+    public var loginItemEnabled: Bool
+    /// 定点启动 LaunchAgent 的开关（到点拉起应用）。关闭后不安装、并清理已装的 plist。
+    public var scheduledLaunchEnabled: Bool
 
     public init(enabled: Bool = true,
                 workdays: Set<Int> = [2, 3, 4, 5, 6],
                 workStartTime: String = "09:00",
                 workDurationHours: Double = 9,
                 flexMinutes: Int = 30,
-                reminderIntervalSeconds: TimeInterval = 120) {
+                reminderIntervalSeconds: TimeInterval = 120,
+                loginItemEnabled: Bool = true,
+                scheduledLaunchEnabled: Bool = true) {
         self.enabled = enabled
         self.workdays = workdays
         self.workStartTime = workStartTime
         self.workDurationHours = workDurationHours
         self.flexMinutes = flexMinutes
         self.reminderIntervalSeconds = reminderIntervalSeconds
+        self.loginItemEnabled = loginItemEnabled
+        self.scheduledLaunchEnabled = scheduledLaunchEnabled
     }
 
     /// 提醒间隔下限 30 秒，避免异常配置导致每秒刷屏。
@@ -64,6 +72,7 @@ public struct Settings: Codable, Equatable, Sendable {
         case eveningWindowStart, eveningDeadline
         case minWorkDurationHours
         case reminderIntervalSeconds
+        case loginItemEnabled, scheduledLaunchEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -73,6 +82,8 @@ public struct Settings: Codable, Equatable, Sendable {
         self.enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
         self.workdays = try c.decodeIfPresent(Set<Int>.self, forKey: .workdays) ?? d.workdays
         self.reminderIntervalSeconds = try c.decodeIfPresent(TimeInterval.self, forKey: .reminderIntervalSeconds) ?? d.reminderIntervalSeconds
+        self.loginItemEnabled = try c.decodeIfPresent(Bool.self, forKey: .loginItemEnabled) ?? d.loginItemEnabled
+        self.scheduledLaunchEnabled = try c.decodeIfPresent(Bool.self, forKey: .scheduledLaunchEnabled) ?? d.scheduledLaunchEnabled
 
         // Decode legacy keys for migration fallback
         let legacyMorningStart = try c.decodeIfPresent(String.self, forKey: .morningWindowStart)
@@ -116,6 +127,8 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(workDurationHours, forKey: .workDurationHours)
         try c.encode(flexMinutes, forKey: .flexMinutes)
         try c.encode(reminderIntervalSeconds, forKey: .reminderIntervalSeconds)
+        try c.encode(loginItemEnabled, forKey: .loginItemEnabled)
+        try c.encode(scheduledLaunchEnabled, forKey: .scheduledLaunchEnabled)
     }
 
     // MARK: - 标准工作日日历

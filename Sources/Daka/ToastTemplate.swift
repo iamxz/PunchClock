@@ -135,13 +135,13 @@ enum ToastTemplate: String, CaseIterable, Identifiable {
     /// 打卡结果提示。`feedback` 非 nil 表示本次打卡仍未达标，附上原因与还差多久。
     static func punch(task: PunchTask, feedback: String?) -> ToastCenter.Toast {
         if let feedback {
-            return ToastCenter.Toast(title: "已记录 \(task.title)打卡",
+            return ToastCenter.Toast(title: "已记录\(task.title)",
                                      body: feedback,
                                      icon: "checkmark.circle.fill",
                                      tint: ToastPalette.brand)
         }
         return ToastCenter.Toast(title: "打卡成功",
-                                 body: "\(task.title)打卡已记录，今天这一步完成了。",
+                                 body: "\(task.title)已记录，今天这一步完成了。",
                                  icon: "checkmark.circle.fill",
                                  tint: ToastPalette.brand)
     }

@@ -34,6 +34,26 @@ enum LoginItemManager {
         return contents.contains(Bundle.main.bundlePath)
     }
 
+    /// 开关开机自启。返回错误信息（成功为 nil）。
+    @discardableResult
+    static func setEnabled(_ enabled: Bool) -> String? {
+        guard Bundle.main.bundlePath.hasSuffix(".app") else { return nil }
+        if enabled { return isEnabled ? nil : registerIfNeeded() }
+
+        var unregisterError: Error?
+        do {
+            try SMAppService.mainApp.unregister()
+        } catch {
+            unregisterError = error
+        }
+        // 回退方案写入的 LaunchAgent 文件一律清掉
+        if FileManager.default.fileExists(atPath: launchAgentURL.path) {
+            try? FileManager.default.removeItem(at: launchAgentURL)
+        }
+        guard let unregisterError, SMAppService.mainApp.status == .enabled else { return nil }
+        return "关闭开机自启失败：\(unregisterError.localizedDescription)"
+    }
+
     static var requiresApproval: Bool {
         SMAppService.mainApp.status == .requiresApproval
     }

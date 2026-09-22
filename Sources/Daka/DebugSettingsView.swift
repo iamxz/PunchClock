@@ -1,10 +1,11 @@
 import SwiftUI
 import DakaCore
 
-/// 设置 → 测试面板：逐个触发 toast 模板，确认真实提示的文案、图标与配色。
+/// 设置 → 测试面板：触发 toast 模板与全屏遮罩预览，确认真实提示的文案、图标与配色。
 ///
-/// 预览调用的就是线上同一份模板（`ToastTemplate`），喝水/久坐的分钟数、工作时长
-/// 取自当前设置，所以面板里看到的内容与真实触发时一致。
+/// 预览调用的就是线上同一份模板（`ToastTemplate`）与同一个 `ReminderController`，
+/// 喝水/久坐的分钟数、工作时长取自当前设置，所以面板里看到的内容与真实触发时一致；
+/// 全屏预览仅去掉「写打卡记录」这一个副作用。
 struct DebugSettingsView: View {
     @ObservedObject var model: AppModel
 
@@ -24,6 +25,18 @@ struct DebugSettingsView: View {
                     Button("连发 3 条（看层叠）") { burst() }
                         .disabled(isPlaying)
                     Button("立即收起") { ToastCenter.shared.dismiss() }
+                }
+            }
+
+            Section("全屏打卡提醒") {
+                Text("点击后立即在所有屏幕弹出真实的全屏遮罩。预览模式下：点圆形按钮只收起遮罩、不会写入打卡记录，ESC 直接结束预览。多屏时可验证每块屏都已渲染、内容是否居中。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 10) {
+                    Button("预览「上班打卡」") { model.previewOverlayReminder([.morning]) }
+                    Button("预览「下班打卡」") { model.previewOverlayReminder([.evening]) }
+                    Button("结束预览") { model.endOverlayPreview() }
                 }
             }
 

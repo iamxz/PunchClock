@@ -65,22 +65,23 @@ struct SystemSettingsView: View {
     var body: some View {
         Form {
             Section("自启与定点") {
-                HStack {
-                    Image(systemName: LoginItemManager.isEnabled ? "checkmark.circle.fill" : "exclamationmark.triangle")
-                        .foregroundStyle(LoginItemManager.isEnabled ? Color.green : Color.orange)
-                    Text(LoginItemManager.isEnabled ? "开机自启已启用"
-                         : (LoginItemManager.requiresApproval ? "开机自启需在系统设置中允许" : "开机自启未启用"))
-                    Spacer()
-                    if LoginItemManager.requiresApproval {
+                Toggle("开机自启", isOn: Binding(
+                    get: { model.loginItemEnabled },
+                    set: { model.setLoginItemEnabled($0) }))
+                if LoginItemManager.requiresApproval {
+                    HStack {
+                        Text("需在「系统设置 → 登录项」中允许").font(.caption).foregroundStyle(.orange)
+                        Spacer()
                         Button("打开设置") { LoginItemManager.openSystemSettings() }
-                    } else if !LoginItemManager.isEnabled {
-                        Button("启用") { model.repairLoginItem() }
                     }
                 }
-                HStack {
-                    Image(systemName: model.scheduledLaunchInstalled ? "checkmark.circle.fill" : "exclamationmark.triangle")
-                        .foregroundStyle(model.scheduledLaunchInstalled ? Color.green : Color.orange)
-                    Text(model.scheduledLaunchInstalled ? "定点启动已启用" : "定点启动未启用")
+
+                Toggle("定点启动", isOn: Binding(
+                    get: { model.settings.scheduledLaunchEnabled },
+                    set: { model.setScheduledLaunchEnabled($0) }))
+                if model.settings.scheduledLaunchEnabled && !model.scheduledLaunchInstalled
+                    && model.scheduledLaunchWarning == nil {
+                    Text("当前运行位置不支持定点启动，需安装到「应用程序」目录").font(.caption).foregroundStyle(.secondary)
                 }
             }
 

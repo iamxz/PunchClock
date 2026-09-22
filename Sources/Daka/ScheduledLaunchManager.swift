@@ -27,6 +27,7 @@ enum ScheduledLaunchManager {
     }
 
     private static func performInstall(settings: Settings) -> InstallResult {
+        guard settings.scheduledLaunchEnabled else { return performUninstall() }
         guard Bundle.main.bundlePath.hasPrefix("/Applications/") else { return .skipped }
         guard let bundleID = Bundle.main.bundleIdentifier else { return .skipped }
 
@@ -55,13 +56,32 @@ enum ScheduledLaunchManager {
         }
 
         let uid = getuid()
-        _ = runLaunchctl(["bootout", "gui/\(uid)/\(LaunchAgentPlist.label)"])
+        bootout(uid: uid)
         let bootstrap = runLaunchctl(["bootstrap", "gui/\(uid)", plistURL.path])
         if bootstrap.status != 0 {
             let detail = bootstrap.stderr.isEmpty ? "退出码 \(bootstrap.status)" : bootstrap.stderr
             return InstallResult(installed: false, warning: "定点启动加载失败（\(detail)）")
         }
         return InstallResult(installed: true, warning: nil)
+    }
+
+    /// 移除 LaunchAgent：先 bootout 再删 plist。
+    private static func performUninstall() -> InstallResult {
+        bootout(uid: getuid())
+        guard FileManager.default.fileExists(atPath: plistURL.path) else {
+            return InstallResult(installed: false, warning: nil)
+        }
+        do {
+            try FileManager.default.removeItem(at: plistURL)
+            return InstallResult(installed: false, warning: nil)
+        } catch {
+            return InstallResult(installed: false,
+                                 warning: "定点启动移除失败：\(error.localizedDescription)")
+        }
+    }
+
+    private static func bootout(uid: uid_t) {
+        _ = runLaunchctl(["bootout", "gui/\(uid)/\(LaunchAgentPlist.label)"])
     }
 
     @discardableResult

@@ -76,7 +76,8 @@ final class AppModel: ObservableObject {
 
     func start() {
         var warnings: [String] = []
-        if let registerError = LoginItemManager.registerIfNeeded() {
+        if settings.loginItemEnabled,
+           let registerError = LoginItemManager.registerIfNeeded() {
             warnings.append(registerError)
         }
         if store.didRecoverFromCorruption {
@@ -363,6 +364,17 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: - 全屏提醒预览（测试面板）
+
+    /// 立即弹出全屏遮罩预览：与真实提醒完全一致，但按钮不写打卡记录。
+    func previewOverlayReminder(_ tasks: [PunchTask]) {
+        reminder?.preview(tasks: tasks, settings: settings, record: record, now: now)
+    }
+
+    func endOverlayPreview() {
+        reminder?.endPreview()
+    }
+
     func clearError() {
         errorMessage = nil
     }
@@ -425,6 +437,13 @@ final class AppModel: ObservableObject {
 
     func setEnabled(_ enabled: Bool) { updateSettings { $0.enabled = enabled } }
 
+    /// 登录项实际状态（含需系统批准的情况）。
+    var loginItemEnabled: Bool { LoginItemManager.isEnabled }
+    var loginItemRequiresApproval: Bool { LoginItemManager.requiresApproval }
+
+    func setLoginItemEnabled(_ enabled: Bool) { updateSettings { $0.loginItemEnabled = enabled } }
+    func setScheduledLaunchEnabled(_ enabled: Bool) { updateSettings { $0.scheduledLaunchEnabled = enabled } }
+
     func setReminderIntervalMinutes(_ minutes: Int) {
         let clamped = min(60, max(1, minutes))
         updateSettings { $0.reminderIntervalSeconds = TimeInterval(clamped * 60) }
@@ -437,6 +456,9 @@ final class AppModel: ObservableObject {
         do {
             try store.updateSettings(s)
             refreshRecord()
+            if let error = LoginItemManager.setEnabled(s.loginItemEnabled) {
+                errorMessage = error
+            }
             installScheduledLaunch()
             scheduler?.tick()
         } catch {
@@ -450,11 +472,6 @@ final class AppModel: ObservableObject {
             self.scheduledLaunchInstalled = result.installed
             self.scheduledLaunchWarning = result.warning
         }
-    }
-
-    func repairLoginItem() {
-        errorMessage = LoginItemManager.registerIfNeeded()
-        objectWillChange.send()
     }
 
     func select(_ item: SidebarSelection) {

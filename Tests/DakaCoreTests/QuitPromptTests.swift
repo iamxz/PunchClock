@@ -2,40 +2,36 @@ import XCTest
 @testable import DakaCore
 
 final class QuitPromptTests: XCTestCase {
-    func testNothingPunchedListsBothTasks() {
-        let text = QuitPrompt.impactText(skipped: false, morningDone: false, eveningDone: false)
-        XCTAssertTrue(text.contains("上班卡、下班卡"), text)
-        XCTAssertTrue(text.contains("不会自动补记"), text)
+    func testAnyMissingPunchWarnsNoRetrofill() {
+        for (morning, evening) in [(false, false), (true, false), (false, true)] {
+            let text = QuitPrompt.impactText(skipped: false,
+                                             morningDone: morning,
+                                             eveningDone: evening)
+            XCTAssertEqual(text, "退出后，漏卡不补")
+        }
     }
 
-    func testOnlyEveningPending() {
-        let text = QuitPrompt.impactText(skipped: false, morningDone: true, eveningDone: false)
-        XCTAssertTrue(text.contains("下班卡"), text)
-        XCTAssertFalse(text.contains("上班卡"), text)
-    }
-
-    func testAllDoneSaysNothingAffected() {
+    func testAllDoneJustSaysRemindersStop() {
         let text = QuitPrompt.impactText(skipped: false, morningDone: true, eveningDone: true)
-        XCTAssertTrue(text.contains("已全部完成"), text)
-        XCTAssertFalse(text.contains("不会自动补记"), text)
+        XCTAssertEqual(text, "退出后停止提醒")
     }
 
-    func testSkippedDayHasNoPendingTasks() {
+    func testSkippedDay() {
         let text = QuitPrompt.impactText(skipped: true, morningDone: false, eveningDone: false)
-        XCTAssertTrue(text.contains("休假"), text)
-        XCTAssertFalse(text.contains("不会自动补记"), text)
+        XCTAssertEqual(text, "今日休假，放心退出")
     }
 
-    /// 无论今天打卡状态如何，都必须说明「退出后提醒会停止」这件关键影响。
-    func testAlwaysExplainsReminderStopsAndDataKept() {
+    /// 一句话文案，不超过 10 字。
+    func testStaysShort() {
         for skipped in [true, false] {
             for morning in [true, false] {
                 for evening in [true, false] {
                     let text = QuitPrompt.impactText(skipped: skipped,
                                                      morningDone: morning,
                                                      eveningDone: evening)
-                    XCTAssertTrue(text.contains("提醒"), text)
-                    XCTAssertTrue(text.contains("不会丢失"), text)
+                    XCTAssertFalse(text.isEmpty)
+                    XCTAssertFalse(text.contains("\n"))
+                    XCTAssertTrue(text.count <= 10, text)
                 }
             }
         }

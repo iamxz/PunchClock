@@ -18,6 +18,8 @@ final class SettingsTests: XCTestCase {
         s.workDurationHours = 8.5
         s.flexMinutes = 15
         s.enabled = false
+        s.loginItemEnabled = false
+        s.scheduledLaunchEnabled = false
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
         XCTAssertEqual(decoded, s)
@@ -54,6 +56,8 @@ final class SettingsTests: XCTestCase {
         let partial = #"{"enabled": false}"#.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(Settings.self, from: partial)
         XCTAssertFalse(decoded.enabled)
+        XCTAssertTrue(decoded.loginItemEnabled)
+        XCTAssertTrue(decoded.scheduledLaunchEnabled)
         XCTAssertEqual(decoded.workStartTime, "09:00")
     }
 

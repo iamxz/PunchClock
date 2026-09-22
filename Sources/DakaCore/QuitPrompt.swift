@@ -15,24 +15,7 @@ public enum QuitPrompt {
     public static func impactText(skipped: Bool,
                                   morningDone: Bool,
                                   eveningDone: Bool) -> String {
-        var lines: [String] = []
-
-        if skipped {
-            lines.append("今天已设为休假，退出不影响今日记录。")
-        } else {
-            var pending: [String] = []
-            if !morningDone { pending.append("上班卡") }
-            if !eveningDone { pending.append("下班卡") }
-            if pending.isEmpty {
-                lines.append("今日打卡已全部完成，退出不影响今日记录。")
-            } else {
-                lines.append("今日还有「\(pending.joined(separator: "、"))」未完成，退出后不会自动补记。")
-            }
-        }
-
-        lines.append("退出后打卡提醒与全屏提醒都会停止，直到下次开机或手动启动。")
-        lines.append("已有的打卡记录与设置不会丢失。")
-
-        return lines.map { "• \($0)" }.joined(separator: "\n")
+        if skipped { return "今日休假，放心退出" }
+        return morningDone && eveningDone ? "退出后停止提醒" : "退出后，漏卡不补"
     }
 }

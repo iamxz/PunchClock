@@ -35,11 +35,14 @@ struct WaterToolView: View {
                 Button {
                     model.drinkWater()
                 } label: {
-                    Label("喝了一杯水", systemImage: "drop.fill")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                        Text("喝了一杯水")
+                        Image(systemName: "drop.fill")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HealthActionButtonStyle(tint: Color(red: 10 / 255, green: 132 / 255, blue: 255 / 255)))
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -136,11 +139,14 @@ struct MovementToolView: View {
                 Button {
                     model.standUp()
                 } label: {
-                    Label("起来走走", systemImage: "figure.walk")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                        Text("起来走走")
+                        Image(systemName: "figure.walk")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HealthActionButtonStyle(tint: Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)))
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -201,6 +207,50 @@ struct MovementToolView: View {
         }
         .pickerStyle(.segmented)
         .frame(width: 220)
+    }
+}
+
+/// 喝水/久坐页主操作按钮：整行大胶囊、主题色渐变、悬停提亮、按下缩小。
+struct HealthActionButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HealthActionButton(configuration: configuration, tint: tint)
+    }
+}
+
+private struct HealthActionButton: View {
+    let configuration: ButtonStyleConfiguration
+    let tint: Color
+    @State private var hovering = false
+
+    var body: some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background {
+                Capsule()
+                    .fill(tint)
+                    .overlay(
+                        Capsule().fill(
+                            LinearGradient(
+                                colors: [.white.opacity(0.18), .black.opacity(0.14)],
+                                startPoint: .top,
+                                endPoint: .bottom)
+                        )
+                    )
+                    .shadow(color: tint.opacity(hovering ? 0.5 : 0.28),
+                            radius: hovering ? 10 : 5,
+                            y: 3)
+            }
+            .brightness(hovering ? 0.06 : 0)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.15), value: hovering)
+            .onHover { hovering = $0 }
+            .contentShape(Capsule())
     }
 }
 

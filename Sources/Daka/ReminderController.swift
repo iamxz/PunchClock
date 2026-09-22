@@ -39,13 +39,34 @@ final class ReminderController: @preconcurrency ReminderPresenting {
     private var snoozeTimer: Timer?
     private var currentTasks: [PunchTask] = []
     private var isSnoozed = false
+    private var isPreview = false
+    private let punchHandler: (PunchTask) -> Void
 
     init(interval: TimeInterval, onPunch: @escaping (PunchTask) -> Void) {
         self.reassertInterval = interval
-        self.overlayModel.onPunch = onPunch
+        self.punchHandler = onPunch
+        overlayModel.onPunch = { [weak self] task in self?.handlePunch(task) }
     }
 
     func showHard(tasks: [PunchTask], settings: DakaCore.Settings, record: DayRecord, now: Date) {
+        isPreview = false
+        present(tasks: tasks, settings: settings, record: record, now: now)
+    }
+
+    /// 测试面板预览：与真实提醒走同一条呈现链路（多屏遮罩、ESC、定时重显全部一致），
+    /// 区别只有一点：点打卡按钮不写记录、直接收起，ESC 也是结束而非稍后。
+    func preview(tasks: [PunchTask], settings: DakaCore.Settings, record: DayRecord, now: Date) {
+        isPreview = true
+        present(tasks: tasks, settings: settings, record: record, now: now)
+    }
+
+    func endPreview() {
+        guard isPreview else { return }
+        isPreview = false
+        hide()
+    }
+
+    private func present(tasks: [PunchTask], settings: DakaCore.Settings, record: DayRecord, now: Date) {
         snoozeTimer?.invalidate()
         snoozeTimer = nil
         isSnoozed = false
@@ -56,6 +77,14 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         overlayModel.now = now
         reassertInterval = settings.effectiveReminderIntervalSeconds
         syncOverlay(activate: true)
+    }
+
+    private func handlePunch(_ task: PunchTask) {
+        if isPreview {
+            endPreview()
+            return
+        }
+        punchHandler(task)
     }
 
     func refresh(settings: DakaCore.Settings, record: DayRecord, now: Date) {
@@ -77,6 +106,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
 
     func hide() {
         stopReassertTimer()
+        isPreview = false
         currentTasks = []
         syncOverlay(activate: false)
     }
@@ -134,11 +164,13 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         for w in windows { w.orderOut(nil) }
 
         windows = screens.map { screen in
+            // 不要用带 `screen:` 的初始化器：多屏下它会对全局坐标再按屏做一次换算，
+            // 导致副屏窗口落点错误、遮罩在第二屏不可见。普通初始化 + setFrame 全局坐标最稳。
             let window = OverlayWindow(contentRect: screen.frame,
                                        styleMask: .borderless,
                                        backing: .buffered,
-                                       defer: false,
-                                       screen: screen)
+                                       defer: false)
+            window.setFrame(screen.frame, display: false)
             window.level = .screenSaver
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             // 背景交给 SwiftUI（Color.black.opacity(0.96)）绘制，窗口本身保持透明，
@@ -179,6 +211,10 @@ final class ReminderController: @preconcurrency ReminderPresenting {
 
     func snooze() {
         guard hasContent, !isSnoozed else { return }
+        if isPreview {
+            endPreview()
+            return
+        }
         stopReassertTimer()
         for w in windows { w.orderOut(nil) }
         isSnoozed = true
