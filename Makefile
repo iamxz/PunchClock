@@ -9,7 +9,7 @@ INSTALL_DIR := /Applications
 # 图标变体：spark（默认）/ bell / bell-ring / ring-check / check / clock
 ICON_VARIANT ?= spark
 
-.PHONY: build test icon app assemble pkg install clean verify-version dist
+.PHONY: build test icon app assemble pkg install clean verify-version dist release
 
 build:
 	swift build -c release
@@ -66,6 +66,10 @@ verify-version:
 	test -n "$(TAG)"
 	@[ "$(PKG_VERSION)" = "$(patsubst v%,%,$(TAG))" ] || (echo "version mismatch: Info.plist $(PKG_VERSION) vs TAG $(TAG)" >&2; exit 1)
 	@echo "version ok: $(PKG_VERSION) == $(TAG)"
+
+# 发版：make release VERSION=<x.y.z|patch|minor|major> [MSG="提交信息"]
+release:
+	@scripts/release.sh '$(VERSION)' '$(MSG)'
 
 dist: pkg
 	ditto -c -k --keepParent "$(APP_BUNDLE)" "build/$(APP_NAME)-$(PKG_VERSION).app.zip"

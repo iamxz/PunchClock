@@ -26,9 +26,9 @@ open build/Daka.app
 ## 发布与打包（交给 GitHub CI）
 
 - **打包发布必须由 GitHub Actions 完成，不要自己本地打包出 release 产物**（不要依赖本地 `make app`/`make install` 的产物作为对外发布版本）。
-- 发版流程：改 `Resources/Info.plist` 版本号 → `git commit` → `git tag vX.Y.Z`（tag 必须与 `CFBundleShortVersionString` 一致，CI 的 `make verify-version` 会校验）→ `git push origin main && git push origin vX.Y.Z`。
+- 发版用脚本，一步完成：`make release VERSION=<x.y.z|patch|minor|major> [MSG="提交信息"]`（即 `scripts/release.sh`）。它会依次做：前置校验（main 分支、不落后远端、tag 不重复）→ `swift test` → 改 `Resources/Info.plist` 双版本号 → 校验与 tag 一致 → commit（工作区未提交改动会一并提交）→ `git tag vX.Y.Z` → push main + tag。
 - 推送 tag 后，CI（`.github/workflows/release.yml`）会自动构建 `.pkg` / `.app.zip` / `checksums.txt` 并发布到 GitHub Release。
-- 本地只负责「提交 + 打 tag + 推送」，**不要**手动 `make install` 到 `/Applications` 当作发布，也不要把本地 `build/Daka.app` 当发布包分发。
+- push 失败时本地 commit/tag 已生成，按脚本提示手动重试即可（幂等）。**不要**手动 `make install` 到 `/Applications` 当作发布，也不要把本地 `build/Daka.app` 当发布包分发。
 - 本地 `make app`/`open build/Daka.app` 仅用于开发期验证功能（如验证升级提醒逻辑），验证完即可，不代表完成发版。
 
 ## 代码规范
