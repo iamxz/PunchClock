@@ -179,7 +179,9 @@ final class ToastCenter {
                             styleMask: [.borderless, .nonactivatingPanel],
                             backing: .buffered,
                             defer: false)
-        panel.level = .floating
+        // toast 是通知层：.floating 会被其他 App 的悬浮窗、菜单栏、输入法候选等压住。
+        // 取屏 saver 之下一档——高于一切，仅低于本应用的全屏提醒遮罩（.screenSaver）。
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue - 1)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isOpaque = false
         panel.backgroundColor = .clear
