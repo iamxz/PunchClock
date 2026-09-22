@@ -1,10 +1,16 @@
 #!/bin/bash
-# 发版脚本：改版本号 → 测试 → commit → tag → push（推送 tag 触发 GitHub CI 打包）。
+# 发版脚本：更新说明 → 改版本号 → 测试 → commit → tag → push（推送 tag 触发 GitHub CI 打包）。
 # 用法: scripts/release.sh <x.y.z | patch | minor | major> ["提交信息"]
+# 更新说明（GitHub Release 正文）按优先级取其一：
+#   NOTES_FILE=<路径>   用该文件内容
+#   NOTES="..."         用这段文本
+#   docs/release-notes/vX.Y.Z.md 已存在则直接用它（推荐：发版前手写）
+#   都没有              从上一个 tag 的提交记录起草一份，随版本一起提交（随后再改写）
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 PLIST="Resources/Info.plist"
+NOTES_DIR="docs/release-notes"
 BRANCH="main"
 REMOTE="origin"
 TEST_CMD="${RELEASE_TEST_CMD:-swift test}"
@@ -12,7 +18,7 @@ TEST_CMD="${RELEASE_TEST_CMD:-swift test}"
 die() { echo "release: $*" >&2; exit 1; }
 
 usage() {
-    echo "用法: make release VERSION=<x.y.z|patch|minor|major> [MSG=\"提交信息\"]" >&2
+    echo "用法: make release VERSION=<x.y.z|patch|minor|major> [MSG=\"提交信息\"] [NOTES=\"更新说明\" | NOTES_FILE=<路径>]" >&2
     exit 1
 }
 
@@ -56,6 +62,40 @@ git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && die "tag $TAG 已存在
 echo "==> fetch $REMOTE"
 git fetch "$REMOTE" "$BRANCH" --quiet
 git merge-base --is-ancestor "$REMOTE/$BRANCH" HEAD || die "本地落后于 $REMOTE/$BRANCH，请先拉取/变基"
+
+# ---- 更新说明 ----
+NOTES_PATH="$NOTES_DIR/$TAG.md"
+PREV_TAG="$(git describe --tags --abbrev=0 HEAD 2>/dev/null || true)"
+mkdir -p "$NOTES_DIR"
+
+if [ -n "${NOTES_FILE:-}" ]; then
+    [ -f "$NOTES_FILE" ] || die "NOTES_FILE 不存在: $NOTES_FILE"
+    cp "$NOTES_FILE" "$NOTES_PATH"
+    NOTES_SOURCE="NOTES_FILE"
+elif [ -n "${NOTES:-}" ]; then
+    printf '%s\n' "$NOTES" > "$NOTES_PATH"
+    NOTES_SOURCE="NOTES"
+elif [ -f "$NOTES_PATH" ]; then
+    NOTES_SOURCE="已有文件"
+else
+    {
+        echo "## 更新内容"
+        echo
+        if [ -n "$PREV_TAG" ]; then
+            git log --no-merges --pretty='- %s' "$PREV_TAG..HEAD"
+        else
+            git log --no-merges --pretty='- %s' HEAD
+        fi
+        echo
+        echo "<!-- 自动草稿：发布前请改写为面向用户的说明，删除本行 -->"
+    } > "$NOTES_PATH"
+    NOTES_SOURCE="自动草稿"
+fi
+[ -s "$NOTES_PATH" ] || die "$NOTES_PATH 内容为空"
+echo "==> $NOTES_PATH ($NOTES_SOURCE${PREV_TAG:+，相比 $PREV_TAG})"
+if [ "$NOTES_SOURCE" = "自动草稿" ]; then
+    echo "    注意：说明由提交记录起草，建议改写后重新执行本次 make release" >&2
+fi
 
 # ---- 测试（先测再改，失败不留半成品）----
 echo "==> $TEST_CMD"

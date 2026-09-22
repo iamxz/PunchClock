@@ -69,9 +69,10 @@ verify-version:
 	@[ "$(PKG_VERSION)" = "$(patsubst v%,%,$(TAG))" ] || (echo "version mismatch: Info.plist $(PKG_VERSION) vs TAG $(TAG)" >&2; exit 1)
 	@echo "version ok: $(PKG_VERSION) == $(TAG)"
 
-# 发版：make release VERSION=<x.y.z|patch|minor|major> [MSG="提交信息"]
+# 发版：make release VERSION=<x.y.z|patch|minor|major> [MSG="提交信息"] [NOTES="更新说明" | NOTES_FILE=<路径>]
+# 更新说明默认读 docs/release-notes/vX.Y.Z.md（发版前手写即可）
 release:
-	@scripts/release.sh '$(VERSION)' '$(MSG)'
+	@NOTES='$(NOTES)' NOTES_FILE='$(NOTES_FILE)' scripts/release.sh '$(VERSION)' '$(MSG)'
 
 dist: pkg
 	ditto -c -k --keepParent "$(APP_BUNDLE)" "build/$(APP_NAME)-$(PKG_VERSION).app.zip"

@@ -75,7 +75,13 @@ shasum -a 256 -c checksums.txt
 
 ### 自动发版
 
-改 `Resources/Info.plist` 的 `CFBundleShortVersionString`（三段 `X.Y.Z`）并推到 `main`：CI 通过后自动打 `vX.Y.Z` 标签并发布 `.pkg` + `.app.zip` + `checksums.txt`。
+先在 `docs/release-notes/` 写好本版本的更新说明（文件名即版本号，如 `v1.2.6.md`），它会被拼进 GitHub Release 正文：
+
+```sh
+make release VERSION=<x.y.z|patch|minor|major> MSG="提交信息"
+```
+
+脚本会跑测试、改 `Resources/Info.plist` 的双版本号、打 `vX.Y.Z` 标签并推送；CI 通过后发布 `.pkg` + `.app.zip` + `checksums.txt` 与该更新说明。忘了写说明时脚本会按提交记录起草一份占位草稿，记得改写后再发。
 
 ### 分发安装包
 

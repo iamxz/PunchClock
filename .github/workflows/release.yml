@@ -3,6 +3,7 @@ name: Release
 # 发布流程：以 tag 为发布单元
 #   1) 手动创建并推送 vX.Y.Z tag  -> 自动构建 .pkg 安装包并生成对应 Release
 #   2) workflow_dispatch 手动补发 -> 指定已有/新 tag 重新生成 Release（若存在则先删旧 release）
+# Release 正文来自仓库内的更新说明 docs/release-notes/vX.Y.Z.md（+ 共用的 _footer.md）
 on:
   push:
     tags:
@@ -39,7 +40,38 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG_NAME }}
+          fetch-depth: 0
           fetch-tags: true
+
+      - name: Assemble release notes
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+          main=refs/remotes/origin/main
+          notes="${RUNNER_TEMP}/notes.md"
+          footer="${RUNNER_TEMP}/footer.md"
+          body="${RUNNER_TEMP}/release-body.md"
+          # 更新说明与页脚都以 main 上那份为准：说明随发版提交进 main，事后也能补写修正
+          if ! git show "${main}:docs/release-notes/${TAG_NAME}.md" > "$notes"; then
+            echo "::error::main 上没有 docs/release-notes/${TAG_NAME}.md，Release 正文会是空的。发版前用 make release VERSION=... NOTES=\"...\" 提供，或先写好该文件"
+            exit 1
+          fi
+          git show "${main}:docs/release-notes/_footer.md" > "$footer" || : > "$footer"
+          {
+            cat "$notes"
+            if [ -s "$footer" ]; then
+              echo
+              cat "$footer"
+            fi
+            prev="$(git describe --tags --abbrev=0 "${TAG_NAME}^{commit}^" 2>/dev/null || true)"
+            if [ -n "$prev" ]; then
+              echo
+              echo "**Full Changelog**: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${prev}...${TAG_NAME}"
+            fi
+          } > "$body"
+          echo "RELEASE_BODY=$body" >> "$GITHUB_ENV"
+          echo "----- release body -----"
+          cat "$body"
 
       - name: Select Xcode and show versions
         run: |
@@ -77,7 +109,8 @@ jobs:
             build/Daka-*.pkg
             build/Daka-*.app.zip
             build/checksums.txt
-          generate_release_notes: true
+          body_path: ${{ env.RELEASE_BODY }}
+          generate_release_notes: false
           make_latest: ${{ github.event_name == 'push' }}
           fail_on_unmatched_files: true
           draft: false
