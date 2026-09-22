@@ -2,27 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>
-    <string>打工人爱护自己</string>
-    <key>CFBundleDisplayName</key>
-    <string>打工人爱护自己</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.xue.daka</string>
-	<key>CFBundleVersion</key>
-	<string>1.2.3</string>
+	<key>CFBundleDisplayName</key>
+	<string>打工人爱护自己</string>
+	<key>CFBundleExecutable</key>
+	<string>Daka</string>
+	<key>CFBundleIconFile</key>
+	<string>Daka</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.xue.daka</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>打工人爱护自己</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.3</string>
-    <key>CFBundleExecutable</key>
-    <string>Daka</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleIconFile</key>
-    <string>Daka</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
+	<string>1.2.4</string>
+	<key>CFBundleVersion</key>
+	<string>1.2.4</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 </dict>
 </plist>

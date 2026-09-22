@@ -1,4 +1,5 @@
 import SwiftUI
+import DakaCore
 
 @main
 struct DakaApp: App {
@@ -9,12 +10,12 @@ struct DakaApp: App {
         MenuBarExtra {
             MenuBarView(model: model)
         } label: {
-            Image(systemName: iconName)
+            Image(nsImage: MenuBarProgressImage.make(
+                fraction: CGFloat(WorkProgress.fraction(model.record,
+                                                        now: model.now,
+                                                        settings: model.settings)),
+                badge: !model.reminderState.isEmpty))
         }
         .menuBarExtraStyle(.window)
-    }
-
-    private var iconName: String {
-        model.reminderState.isEmpty ? "checkmark.seal" : "exclamationmark.triangle.fill"
     }
 }
