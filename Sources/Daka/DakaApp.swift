@@ -13,7 +13,8 @@ struct DakaApp: App {
             Image(nsImage: MenuBarProgressImage.make(
                 fraction: CGFloat(WorkProgress.fraction(model.record,
                                                         now: model.now,
-                                                        settings: model.settings)),
+                                                        settings: model.settings,
+                                                        leaves: model.leaves)),
                 badge: !model.reminderState.isEmpty))
         }
         .menuBarExtraStyle(.window)

@@ -65,7 +65,7 @@ public final class Scheduler {
         let settings = store.data.settings
         let record = store.record(for: now, calendar: calendar)
         let pending = evaluator.pendingReminders(now: now, settings: settings, record: record,
-                                                 calendar: calendar)
+                                                 leaves: store.data.leaves, calendar: calendar)
         apply(state: ReminderState(pending: pending), settings: settings, record: record, now: now, dayChanged: dayChanged)
     }
 

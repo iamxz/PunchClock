@@ -9,13 +9,13 @@ public enum QuitPrompt {
 
     /// 退出影响说明：按今日打卡状态给出对应提示。
     /// - Parameters:
-    ///   - skipped: 今天是否已设为休假。
+    ///   - onLeave: 今天是否**整天**请假（半天请假仍欠工时，不算）。
     ///   - morningDone: 今天上班卡是否已打。
     ///   - eveningDone: 今天下班卡是否已满足工作时长完成。
-    public static func impactText(skipped: Bool,
+    public static func impactText(onLeave: Bool,
                                   morningDone: Bool,
                                   eveningDone: Bool) -> String {
-        if skipped { return "今日休假，放心退出" }
+        if onLeave { return "今日休假，放心退出" }
         return morningDone && eveningDone ? "退出后停止提醒" : "退出后，漏卡不补"
     }
 }

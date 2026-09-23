@@ -10,7 +10,7 @@ public enum AttendanceStatus: String, CaseIterable, Equatable, Sendable {
     case missed
     /// 工作日、今天、窗口未过：待打卡。
     case pending
-    /// 请假（已标记为休假）。
+    /// 请假（当天应工作时长被请假全部抵扣，无需打卡）。
     case leave
 }
 
@@ -27,6 +27,10 @@ public struct AttendanceDayCell: Equatable, Sendable {
     public let eveningDoneAt: Date?
     public let isToday: Bool
     public let isFuture: Bool
+    /// 当天有效（裁剪到当天）的请假片段，用于 tooltip 与右键菜单。
+    public let leaveSlices: [LeaveSlice]
+    /// 当天请假占应工作时长比例；非工作日为 0。
+    public let leaveFraction: Double
 
     public init(date: Date,
                 dateKey: String,
@@ -37,7 +41,9 @@ public struct AttendanceDayCell: Equatable, Sendable {
                 morningDoneAt: Date?,
                 eveningDoneAt: Date?,
                 isToday: Bool,
-                isFuture: Bool) {
+                isFuture: Bool,
+                leaveSlices: [LeaveSlice] = [],
+                leaveFraction: Double = 0) {
         self.date = date
         self.dateKey = dateKey
         self.day = day
@@ -48,6 +54,8 @@ public struct AttendanceDayCell: Equatable, Sendable {
         self.eveningDoneAt = eveningDoneAt
         self.isToday = isToday
         self.isFuture = isFuture
+        self.leaveSlices = leaveSlices
+        self.leaveFraction = leaveFraction
     }
 }
 
@@ -71,8 +79,10 @@ public enum AttendanceCalendar {
     /// - Parameters:
     ///   - month: 任意落在目标月份的日期，取其年/月。
     ///   - now: 当前时间，用于判定今天 / 未来 / 缺卡窗口。
+    ///   - leaves: 全部请假记录（含未来），用于判定请假与抵扣工时。
     public static func monthGrid(records: [String: DayRecord],
                                  settings: Settings,
+                                 leaves: [LeaveRecord],
                                  month: Date,
                                  now: Date,
                                  calendar: Calendar = .current) -> MonthGrid {
@@ -93,7 +103,8 @@ public enum AttendanceCalendar {
         for day in 1...daysInMonth {
             guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else { continue }
             flat.append(makeCell(date: date, records: records, settings: settings,
-                                 now: now, todayMidnight: todayMidnight, calendar: calendar))
+                                 leaves: leaves, now: now,
+                                 todayMidnight: todayMidnight, calendar: calendar))
         }
 
         while flat.count % 7 != 0 { flat.append(nil) }
@@ -108,6 +119,7 @@ public enum AttendanceCalendar {
     private static func makeCell(date: Date,
                                  records: [String: DayRecord],
                                  settings: Settings,
+                                 leaves: [LeaveRecord],
                                  now: Date,
                                  todayMidnight: Date,
                                  calendar: Calendar) -> AttendanceDayCell {
@@ -118,20 +130,26 @@ public enum AttendanceCalendar {
         let isToday = calendar.isDate(date, inSameDayAs: now)
         let isFuture = date > todayMidnight
 
+        let fullDayLeave = AttendanceRule.isFullDayLeave(settings, on: date,
+                                                         leaves: leaves, calendar: calendar)
+        let daySlices = LeaveRules.slices(on: date, in: leaves, calendar: calendar)
+
         let status: AttendanceStatus
-        if record.skipped {
+        if fullDayLeave {
             status = .leave
         } else if !isWorkday {
             status = .none
         } else {
             let completedBoth = record.morningDone &&
-                AttendanceRule.isEveningComplete(record, settings: settings, on: date, calendar: calendar)
+                AttendanceRule.isEveningComplete(record, settings: settings, on: date,
+                                                 leaves: leaves, calendar: calendar)
             if completedBoth {
                 status = .done
             } else if isFuture {
                 status = .none
             } else if isToday {
-                let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: date, calendar: calendar)
+                let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: date,
+                                                                 leaves: leaves, calendar: calendar)
                 let expired = expectedLeave.map { now >= $0 } ?? false
                 status = expired ? .missed : .pending
             } else {
@@ -139,11 +157,17 @@ public enum AttendanceCalendar {
             }
         }
 
-        let effectiveEvening = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: date, calendar: calendar)
+        let effectiveEvening = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: date,
+                                                                    leaves: leaves, calendar: calendar)
 
         return AttendanceDayCell(date: date, dateKey: key, day: calendar.component(.day, from: date),
                                  weekday: weekday, isWorkday: isWorkday, status: status,
                                  morningDoneAt: record.morningDoneAt, eveningDoneAt: effectiveEvening,
-                                 isToday: isToday, isFuture: isFuture)
+                                 isToday: isToday, isFuture: isFuture,
+                                 leaveSlices: daySlices,
+                                 leaveFraction: isWorkday
+                                    ? AttendanceRule.leaveFraction(settings, on: date,
+                                                                   leaves: leaves, calendar: calendar)
+                                    : 0)
     }
 }

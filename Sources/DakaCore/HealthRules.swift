@@ -34,7 +34,7 @@ public enum HealthRules {
     public static func status(health: HealthSettings,
                               schedule: Settings,
                               record: DayHealthRecord,
-                              skipped: Bool,
+                              leaves: [LeaveRecord],
                               now: Date,
                               calendar: Calendar = .current) -> HealthStatus {
         let windowStart = DakaDate.date(on: now, at: schedule.workStartTime, calendar: calendar)
@@ -48,11 +48,15 @@ public enum HealthRules {
             inWindow = false
         }
 
+        let daySlices = LeaveRules.slices(on: now, in: leaves, calendar: calendar)
         let active = schedule.enabled
-            && !skipped
             && schedule.isWorkday(now, calendar: calendar)
             && inWindow
+            // 整天请假不提醒；半天请假只在请假的那段时间内安静，工作时段照常。
+            && !AttendanceRule.isFullDayLeave(schedule, on: now, leaves: leaves, calendar: calendar)
+            && !LeaveRules.contains(now, slices: daySlices)
 
+        // 已知取舍：基线仍锚在上班时刻，所以「上午请假到 11:00」后第一次喝水提醒会立刻触发。
         let drinkBase = record.lastDrinkAt ?? windowStart ?? now
         let standBase = record.lastStandAt ?? windowStart ?? now
         let drinkMinutes = max(0, Int(now.timeIntervalSince(drinkBase) / 60))

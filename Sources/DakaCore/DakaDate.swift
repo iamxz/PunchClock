@@ -16,6 +16,15 @@ public enum DakaDate {
         return (h, m)
     }
 
+    /// 解析 "yyyy-MM-dd" 为当天 00:00（`key(for:)` 的逆运算）。
+    public static func date(for key: String, calendar: Calendar = .current) -> Date? {
+        let parts = key.split(separator: "-")
+        guard parts.count == 3,
+              let y = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2]),
+              (1...12).contains(m), (1...31).contains(d) else { return nil }
+        return calendar.date(from: DateComponents(year: y, month: m, day: d))
+    }
+
     /// 取 `day` 当天的 "HH:mm" 时刻。
     public static func date(on day: Date, at hhmm: String, calendar: Calendar = .current) -> Date? {
         guard let comps = timeComponents(hhmm) else { return nil }

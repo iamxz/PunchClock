@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var record: DayRecord
     @Published private(set) var settings: DakaCore.Settings
+    @Published private(set) var leaves: [LeaveRecord]
     @Published private(set) var reminderState = ReminderState()
     @Published var errorMessage: String?
     @Published var startupWarning: String?
@@ -43,7 +44,8 @@ final class AppModel: ObservableObject {
     var workDuration: TimeInterval { settings.workDuration }
 
     var isEveningComplete: Bool {
-        AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: .current)
+        AttendanceRule.isEveningComplete(record, settings: settings,
+                                         on: now, leaves: leaves, calendar: .current)
     }
 
     func setWorkDurationHours(_ hours: Double) {
@@ -70,6 +72,7 @@ final class AppModel: ObservableObject {
         self.healthStore = resolvedHealth
         self.settings = resolvedStore.data.settings
         self.record = resolvedStore.record(for: clock.now)
+        self.leaves = resolvedStore.data.leaves
         self.healthSettings = resolvedHealth.data.settings
         self.healthRecord = resolvedHealth.record(for: clock.now)
     }
@@ -214,13 +217,14 @@ final class AppModel: ObservableObject {
     func refreshRecord() {
         record = store.record(for: clock.now)
         settings = store.data.settings
+        leaves = store.data.leaves
     }
 
     var healthStatus: HealthStatus {
         HealthRules.status(health: healthSettings,
                            schedule: settings,
                            record: healthRecord,
-                           skipped: record.skipped,
+                           leaves: leaves,
                            now: clock.now)
     }
 
@@ -327,6 +331,7 @@ final class AppModel: ObservableObject {
             let feedback = PunchFeedback.text(task: task,
                                               record: record,
                                               settings: settings,
+                                              leaves: leaves,
                                               punchedAt: clock.now)
             // 打卡结果是纯操作反馈，6 秒自动收起。
             ToastCenter.shared.show(ToastTemplate.punch(task: task, feedback: feedback), duration: 6)
@@ -397,20 +402,68 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func setSkipped(_ skipped: Bool) {
-        setSkipped(skipped, on: clock.now)
+    // MARK: - 请假
+
+    /// 与某天相交的整条请假记录（跨天请假在任意一天都能整条撤销、整条展示）。
+    func leaves(intersecting day: Date) -> [LeaveRecord] {
+        store.leaves(intersecting: day)
     }
 
-    /// 设置某天为休假 / 取消休假（日历右键入口，可作用于今天与过去任意日期）。
-    func setSkipped(_ skipped: Bool, on day: Date) {
+    /// 当天是否整天请假（应工作时长被全部抵扣，无需打卡）。
+    func isFullDayLeave(on day: Date) -> Bool {
+        AttendanceRule.isFullDayLeave(settings, on: day, leaves: leaves, calendar: .current)
+    }
+
+    /// 本月请假折算天数（按当天请假时长 ÷ 应工作时长累加，半天 = 0.5 天，只计工作日）。
+    func monthLeaveDays(month: Date) -> Double {
+        Statistics.leaveDays(leaves: leaves, settings: settings,
+                             month: month, calendar: .current)
+    }
+
+    /// 新增一段时间请假（可当天、可跨天）。
+    /// - Returns: 是否写入成功（结束不晚于开始会失败）。
+    @discardableResult
+    func addLeave(from: Date, to: Date, label: String? = nil) -> Bool {
         errorMessage = nil
         do {
-            try store.setSkipped(skipped, on: day)
-            refreshRecord()
-            scheduler?.tick()
+            try store.addLeave(from: from, to: to, label: label)
+            afterLeaveChange()
+            return true
         } catch {
-            errorMessage = "保存失败：\(error.localizedDescription)"
+            errorMessage = "请假保存失败：\(error.localizedDescription)"
+            return false
         }
+    }
+
+    @discardableResult
+    func updateLeave(id: UUID, from: Date, to: Date, label: String? = nil) -> Bool {
+        errorMessage = nil
+        do {
+            try store.updateLeave(id: id, from: from, to: to, label: label)
+            afterLeaveChange()
+            return true
+        } catch {
+            errorMessage = "请假保存失败：\(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// 取消与某天相交的请假（跨天请假一次整条撤销）。
+    func removeLeaves(on day: Date) {
+        errorMessage = nil
+        do {
+            try store.removeLeaves(on: day)
+            afterLeaveChange()
+        } catch {
+            errorMessage = "请假取消失败：\(error.localizedDescription)"
+        }
+    }
+
+    /// 请假变更后的统一刷新：重算当天状态、重评打卡提醒与健康提醒是否该被抑制。
+    private func afterLeaveChange() {
+        refreshRecord()
+        scheduler?.tick()
+        healthReminder?.tick()
     }
 
     /// 清除某天的全部打卡记录（日历右键入口）。
@@ -482,6 +535,7 @@ final class AppModel: ObservableObject {
     func statistics(rangeDays: Int) -> StatisticsSummary {
         Statistics.compute(records: store.data.records,
                            settings: store.data.settings,
+                           leaves: store.data.leaves,
                            now: clock.now,
                            rangeDays: rangeDays)
     }
@@ -493,20 +547,24 @@ final class AppModel: ObservableObject {
     func attendanceMonthGrid(month: Date) -> MonthGrid {
         AttendanceCalendar.monthGrid(records: store.data.records,
                                      settings: store.data.settings,
+                                     leaves: store.data.leaves,
                                      month: month,
                                      now: clock.now)
     }
 
-    /// 某天「合格下班卡」的下限时刻：上班卡 + 工作时长。没有上班卡时返回 nil。
+    /// 某天「合格下班卡」的下限时刻：上班卡 + 扣除请假后仍需工作的时长。没有上班卡时返回 nil。
     func eveningThreshold(on day: Date) -> Date? {
-        guard let morning = store.record(for: day).morningDoneAt else { return nil }
-        return morning.addingTimeInterval(store.data.settings.workDuration)
+        AttendanceRule.expectedLeave(store.record(for: day),
+                                     settings: store.data.settings,
+                                     on: day,
+                                     leaves: store.data.leaves)
     }
 
     /// 当前连续打卡天数（跨月统计）。
     var currentStreak: Int {
         Statistics.compute(records: store.data.records,
                            settings: store.data.settings,
+                           leaves: store.data.leaves,
                            now: clock.now,
                            rangeDays: 400).currentStreak
     }
@@ -519,7 +577,7 @@ final class AppModel: ObservableObject {
 
     /// 退出影响说明（确认弹窗正文），按今日打卡状态生成。
     var quitImpactText: String {
-        QuitPrompt.impactText(skipped: record.skipped,
+        QuitPrompt.impactText(onLeave: isFullDayLeave(on: now),
                               morningDone: record.morningDone,
                               eveningDone: isEveningComplete)
     }

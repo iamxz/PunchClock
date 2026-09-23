@@ -29,6 +29,7 @@ struct StatisticsView: View {
     @ObservedObject var model: AppModel
     @State private var displayedMonth: Date
     @State private var makeUpRequest: MakeUpPunchRequest?
+    @State private var leaveRequest: LeaveEditRequest?
     @State private var pendingClear: AttendanceDayCell?
     /// 走势图的时间范围（天）。
     @State private var chartRangeDays = 14
@@ -71,16 +72,23 @@ struct StatisticsView: View {
                     metricCard("连续打卡", "\(model.currentStreak) 天", "flame")
                     metricCard("平均上班", averageText, "clock")
                     metricCard("缺卡", "\(missedDays) 天", "exclamationmark.triangle")
+                    metricCard("本月请假", Statistics.leaveDaysText(model.monthLeaveDays(month: displayedMonth)) + " 天", "figure.walk")
                 }
 
                 CalendarView(displayedMonth: $displayedMonth,
                              records: model.records,
                              settings: model.settings,
+                             leaves: model.leaves,
                              now: model.now,
-                             onToggleLeave: toggleLeave,
+                             onAddLeave: { leaveRequest = LeaveEditRequest(date: $0.date, leave: nil) },
+                             onEditLeave: { cell, leave in
+                                 leaveRequest = LeaveEditRequest(date: cell.date, leave: leave)
+                             },
+                             onCancelLeave: { cancelLeave($0) },
                              onMakeUp: { makeUpRequest = makeUpRequest(for: $0) },
                              onClearPunches: { pendingClear = $0 })
                 .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.records)
+                .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.leaves)
 
                 workDurationChart
             }
@@ -88,6 +96,9 @@ struct StatisticsView: View {
         .overlayScrollers()
         .sheet(item: $makeUpRequest) { request in
             MakeUpPunchEditor(model: model, request: request)
+        }
+        .sheet(item: $leaveRequest) { request in
+            LeaveEditor(model: model, request: request)
         }
         .confirmationDialog("清除该天的全部打卡记录？",
                             isPresented: clearBinding,
@@ -113,10 +124,10 @@ struct StatisticsView: View {
 
     // MARK: - 日历右键动作
 
-    private func toggleLeave(_ cell: AttendanceDayCell) {
-        let leave = cell.status != .leave
+    /// 取消与这天相连的请假：跨天日程整条撤销，一次点完。
+    private func cancelLeave(_ cell: AttendanceDayCell) {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-            model.setSkipped(leave, on: cell.date)
+            model.removeLeaves(on: cell.date)
         }
     }
 
@@ -124,7 +135,8 @@ struct StatisticsView: View {
         let record = model.records[cell.dateKey] ?? DayRecord()
         var missing: [PunchTask] = []
         if !record.morningDone { missing.append(.morning) }
-        if !AttendanceRule.isEveningComplete(record, settings: model.settings, on: cell.date) {
+        if !AttendanceRule.isEveningComplete(record, settings: model.settings, on: cell.date,
+                                             leaves: model.leaves) {
             missing.append(.evening)
         }
 
@@ -350,9 +362,11 @@ struct MakeUpPunchEditor: View {
         let fallback = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: request.date) ?? request.date
         let morning = DakaDate.date(on: request.date, at: settings.workStartTime, calendar: calendar) ?? fallback
 
-        // 下班卡必须不早于「上班卡 + 工作时长」；优先按已存在的上班卡推算，否则按即将补的上班卡推算。
+        // 下班卡必须不早于「上班卡 + 扣除当天请假后仍需工作的时长」；
+        // 优先按已存在的上班卡推算，否则按即将补的上班卡推算。
         let referenceMorning = request.existingMorning ?? morning
-        let threshold = referenceMorning.addingTimeInterval(settings.workDuration)
+        let threshold = Self.eveningThreshold(model: model, request: request, morning: referenceMorning)
+            ?? referenceMorning.addingTimeInterval(settings.workDuration)
         let qualifyingEvening = Self.roundedUpToMinute(threshold).addingTimeInterval(60)
 
         _morningEnabled = State(initialValue: request.missing.contains(.morning))
@@ -361,12 +375,26 @@ struct MakeUpPunchEditor: View {
         _eveningTime = State(initialValue: qualifyingEvening)
     }
 
+    /// 这次补卡视同的上班卡：已有卡优先，否则用即将补上的那张。
+    private var referenceMorning: Date? {
+        request.existingMorning
+            ?? (request.missing.contains(.morning) && morningEnabled ? morningTime : nil)
+    }
+
     /// 合格下班卡的下限时刻（依据实际上班卡推算）。
     private var eveningThreshold: Date? {
-        let morning = request.existingMorning
-            ?? (request.missing.contains(.morning) && morningEnabled ? morningTime : nil)
-        guard let morning else { return nil }
-        return morning.addingTimeInterval(model.settings.workDuration)
+        guard let referenceMorning else { return nil }
+        return Self.eveningThreshold(model: model, request: request, morning: referenceMorning)
+    }
+
+    /// 该天的合格下班卡下限：直接复用考勤规则，避免弹窗与日历各算一套。
+    private static func eveningThreshold(model: AppModel,
+                                         request: MakeUpPunchRequest,
+                                         morning: Date) -> Date? {
+        var probe = model.records[request.dateKey] ?? DayRecord()
+        probe.morningPunches = [morning]
+        return AttendanceRule.expectedLeave(probe, settings: model.settings, on: request.date,
+                                            leaves: model.leaves)
     }
 
     private var eveningQualified: Bool {
@@ -433,7 +461,8 @@ struct MakeUpPunchEditor: View {
     /// 「这条下班卡到底算不算」的显式提示 —— 这是补卡最容易踩的坑。
     @ViewBuilder
     private var qualificationNotice: some View {
-        if request.missing.contains(.evening), eveningEnabled, let threshold = eveningThreshold {
+        if request.missing.contains(.evening), eveningEnabled,
+           let morning = referenceMorning, let threshold = eveningThreshold {
             if eveningQualified {
                 Label("下班卡 \(Self.timeText(eveningTime)) 计入当天考勤（需不早于 \(Self.timeText(threshold))）",
                       systemImage: "checkmark.seal")
@@ -445,7 +474,7 @@ struct MakeUpPunchEditor: View {
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.orange)
-                    Text("上班卡 \(Self.timeText(threshold.addingTimeInterval(-model.settings.workDuration))) + 工作时长 \(Self.hoursText(model.settings.workDuration)) → 下班需不早于 \(Self.timeText(threshold))；当前选择 \(Self.timeText(eveningTime))。")
+                    Text("上班卡 \(Self.timeText(morning)) + 应工作 \(Self.hoursText(threshold.timeIntervalSince(morning))) → 下班需不早于 \(Self.timeText(threshold))；当前选择 \(Self.timeText(eveningTime))。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

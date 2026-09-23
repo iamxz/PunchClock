@@ -45,6 +45,7 @@ struct PunchButton: View {
     let record: DayRecord
     let nowProvider: () -> Date
     let settings: DakaCore.Settings
+    let leaves: [LeaveRecord]
     let onComplete: (PunchTask) -> Void
 
     @StateObject private var press = PunchPressModel()
@@ -97,12 +98,14 @@ struct PunchButton: View {
     private var isPressing: Bool { press.progress > 0 }
 
     private var isEveningComplete: Bool {
-        AttendanceRule.isEveningComplete(record, settings: settings, on: nowProvider(), calendar: .current)
+        AttendanceRule.isEveningComplete(record, settings: settings, on: nowProvider(),
+                                         leaves: leaves, calendar: .current)
     }
 
     private var ringFraction: CGFloat {
         if isPressing { return press.progress }
-        return CGFloat(WorkProgress.fraction(record, now: nowProvider(), settings: settings))
+        return CGFloat(WorkProgress.fraction(record, now: nowProvider(),
+                                             settings: settings, leaves: leaves))
     }
 
     private var tint: Color {
@@ -119,7 +122,8 @@ struct PunchButton: View {
         } else {
             lines.append(task.title)
         }
-        if let elapsed = WorkProgress.elapsed(record, now: nowProvider(), settings: settings) {
+        if let elapsed = WorkProgress.elapsed(record, now: nowProvider(),
+                                              settings: settings, leaves: leaves) {
             lines.append(WorkProgress.hoursText(elapsed))
         }
         return lines

@@ -49,9 +49,9 @@ final class HealthReminderController {
         let health = healthStore.data.settings
         let schedule = scheduleStore.data.settings
         let record = healthStore.record(for: now)
-        let skipped = scheduleStore.record(for: now).skipped
         let status = HealthRules.status(health: health, schedule: schedule,
-                                        record: record, skipped: skipped, now: now)
+                                        record: record,
+                                        leaves: scheduleStore.data.leaves, now: now)
 
         var alerts: [HealthAlert] = []
 

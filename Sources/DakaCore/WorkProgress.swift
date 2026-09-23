@@ -3,27 +3,34 @@ import Foundation
 /// 今天已工作时长与圆环进度。未打上班卡即无意义。
 public enum WorkProgress {
     /// 已工作时长；未打上班卡时 nil。
-    /// 终点：若有合格下班卡取之（实际总时长），否则取 now。
+    /// 终点：若有合格下班卡取之（实际总时长），否则取 now。落在区间内的请假时长不计。
     public static func elapsed(_ record: DayRecord,
                                now: Date,
                                settings: Settings,
+                               leaves: [LeaveRecord],
                                calendar: Calendar = .current) -> TimeInterval? {
         guard let morning = record.morningDoneAt else { return nil }
-        let end = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: now, calendar: calendar) ?? now
-        return max(0, end.timeIntervalSince(morning))
+        let end = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: now,
+                                                       leaves: leaves, calendar: calendar) ?? now
+        let onLeave = LeaveRules.slices(on: now, in: leaves, calendar: calendar)
+            .reduce(TimeInterval(0)) { $0 + LeaveRules.overlap((morning, end), ($1.start, $1.end)) }
+        return max(0, end.timeIntervalSince(morning) - onLeave)
     }
 
-    /// 圆环进度 0...1；未打上班卡为 0，最少工时为 0 时视为 1。
+    /// 圆环进度 0...1；未打上班卡为 0，扣除请假后无需工作即视为 1。
     public static func fraction(_ record: DayRecord,
                                 now: Date,
                                 settings: Settings,
+                                leaves: [LeaveRecord],
                                 calendar: Calendar = .current) -> Double {
-        let minWorkDuration = settings.workDuration
-        guard let elapsed = elapsed(record, now: now, settings: settings, calendar: calendar) else {
+        guard let elapsed = elapsed(record, now: now, settings: settings,
+                                    leaves: leaves, calendar: calendar) else {
             return 0
         }
-        guard minWorkDuration > 0 else { return 1 }
-        return min(1, elapsed / minWorkDuration)
+        let need = AttendanceRule.requiredWorkDuration(settings, on: now,
+                                                       leaves: leaves, calendar: calendar)
+        guard need > 0 else { return 1 }
+        return min(1, elapsed / need)
     }
 
     /// 显示文案：`4h` / `4.5h` / `45m`；负值按 `0m`。

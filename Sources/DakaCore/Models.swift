@@ -152,12 +152,14 @@ public struct Settings: Codable, Equatable, Sendable {
 public struct DayRecord: Codable, Equatable, Sendable {
     public var morningPunches: [Date]
     public var eveningPunches: [Date]
-    public var skipped: Bool
+    /// ⚠️ 只用于解码旧 JSON —— 迁移成整天请假发生在 `DakaData.init(from:)`。
+    /// 运行时判定一律读 `DakaData.leaves`：既不参与编码，也不能再被业务读取。
+    public let skipped: Bool
 
-    public init(morningPunches: [Date] = [], eveningPunches: [Date] = [], skipped: Bool = false) {
+    public init(morningPunches: [Date] = [], eveningPunches: [Date] = []) {
         self.morningPunches = morningPunches
         self.eveningPunches = eveningPunches
-        self.skipped = skipped
+        self.skipped = false
     }
 
     public var morningDone: Bool { !morningPunches.isEmpty }
@@ -195,16 +197,55 @@ public struct DayRecord: Codable, Equatable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(morningPunches, forKey: .morningPunches)
         try c.encode(eveningPunches, forKey: .eveningPunches)
-        try c.encode(skipped, forKey: .skipped)
+        // `skipped` 不再写出：请假只存 `DakaData.leaves`（与 Settings「只写新键」同一套契约）。
     }
 }
 
 public struct DakaData: Codable, Equatable, Sendable {
     public var settings: Settings
     public var records: [String: DayRecord]
+    /// 请假（时间段，可跨天）。跨天区间原样存一条，按天求交派生当天片段。
+    public var leaves: [LeaveRecord]
 
-    public init(settings: Settings = .default, records: [String: DayRecord] = [:]) {
+    public init(settings: Settings = .default,
+                records: [String: DayRecord] = [:],
+                leaves: [LeaveRecord] = []) {
         self.settings = settings
         self.records = records
+        self.leaves = leaves
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case settings, records, leaves
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? .default
+        self.records = try c.decodeIfPresent([String: DayRecord].self, forKey: .records) ?? [:]
+        // 只在 `leaves` 键完全缺失（旧文件）时迁移：否则用户把请假清空成 [] 后旧标记会复活。
+        // 新键走宽松解码 —— 一条写坏的请假只能丢请假，不能让整库被判损坏而连带丢打卡。
+        self.leaves = c.contains(.leaves)
+            ? ((try? c.decode([LeaveRecord].self, forKey: .leaves)) ?? []).sorted { $0.start < $1.start }
+            : DakaData.migratedLeaves(from: self.records, calendar: .current)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(settings, forKey: .settings)
+        try c.encode(records, forKey: .records)
+        // 空数组也要写：它同时是「本文件已完成请假迁移」的标记。
+        try c.encode(leaves, forKey: .leaves)
+    }
+
+    /// 旧 `records[key].skipped == true` → 一条整天请假 [key 00:00, key+1 00:00)。
+    static func migratedLeaves(from records: [String: DayRecord], calendar: Calendar) -> [LeaveRecord] {
+        records.reduce(into: [LeaveRecord]()) { result, entry in
+            guard entry.value.skipped,
+                  let dayStart = DakaDate.date(for: entry.key, calendar: calendar),
+                  let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return }
+            result.append(LeaveRecord(start: dayStart, end: dayEnd))
+        }
+        .sorted { $0.start < $1.start }
     }
 }

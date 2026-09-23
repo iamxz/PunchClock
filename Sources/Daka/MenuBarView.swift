@@ -22,10 +22,12 @@ struct MenuBarView: View {
 
             PunchButton(task: PunchTarget.resolve(record: model.record,
                                                    now: model.now,
-                                                   settings: model.settings),
+                                                   settings: model.settings,
+                                                   leaves: model.leaves),
                         record: model.record,
                         nowProvider: { model.now },
-                        settings: model.settings) { task in
+                        settings: model.settings,
+                        leaves: model.leaves) { task in
                 model.punch(task)
             }
         }

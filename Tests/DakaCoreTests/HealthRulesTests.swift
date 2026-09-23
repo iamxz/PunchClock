@@ -12,9 +12,9 @@ final class HealthRulesTests: XCTestCase {
     private func status(now: Date,
                         record: DayHealthRecord = DayHealthRecord(),
                         health: HealthSettings = .default,
-                        skipped: Bool = false) -> HealthStatus {
+                        leaves: [LeaveRecord] = []) -> HealthStatus {
         HealthRules.status(health: health, schedule: schedule, record: record,
-                           skipped: skipped, now: now, calendar: cal)
+                           leaves: leaves, now: now, calendar: cal)
     }
 
     // 2026-09-14 为周一
@@ -54,10 +54,35 @@ final class HealthRulesTests: XCTestCase {
         XCTAssertFalse(s.waterDue)
     }
 
-    func testSkippedInactive() {
-        let s = status(now: TestTime.date(2026, 9, 14, 10, 30), skipped: true)
+    func testFullDayLeaveInactive() {
+        let s = status(now: TestTime.date(2026, 9, 14, 10, 30),
+                       leaves: [TestTime.fullDayLeave(on: TestTime.monday)])
         XCTAssertFalse(s.active)
         XCTAssertFalse(s.waterDue)
+    }
+
+    /// 半天假：请假的这段时间安静，工作时段照常。
+    func testMorningLeaveOnlySilencesItsOwnWindow() {
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (9, 0), to: (11, 0))]
+        XCTAssertFalse(status(now: TestTime.date(2026, 9, 14, 10, 30), leaves: leaves).active)
+        XCTAssertTrue(status(now: TestTime.date(2026, 9, 14, 11, 0), leaves: leaves).active)
+    }
+
+    /// 已知取舍：喝水基线仍锚在上班时刻，上午请假一结束就会立刻提示补喝水。
+    func testMorningLeaveResumesWithImmediateReminder() {
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (9, 0), to: (11, 0))]
+        let s = status(now: TestTime.date(2026, 9, 14, 11, 0), leaves: leaves)
+        XCTAssertTrue(s.active)
+        XCTAssertEqual(s.minutesSinceDrink, 120)
+        XCTAssertTrue(s.waterDue)
+    }
+
+    /// 下午请假：16:00 起安静，18:00 恢复。
+    func testAfternoonLeaveSilencesOnlyAfternoon() {
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (16, 0), to: (18, 0))]
+        XCTAssertTrue(status(now: TestTime.date(2026, 9, 14, 15, 30), leaves: leaves).active)
+        XCTAssertFalse(status(now: TestTime.date(2026, 9, 14, 17, 0), leaves: leaves).active)
+        XCTAssertTrue(status(now: TestTime.date(2026, 9, 14, 18, 0), leaves: leaves).active)
     }
 
     func testDisabledToolDoesNotRemind() {
@@ -85,7 +110,7 @@ final class HealthRulesTests: XCTestCase {
         var s = schedule
         s.workStartTime = "oops"
         let result = HealthRules.status(health: .default, schedule: s,
-                                        record: DayHealthRecord(), skipped: false,
+                                        record: DayHealthRecord(), leaves: [],
                                         now: TestTime.date(2026, 9, 14, 10, 30), calendar: cal)
         XCTAssertFalse(result.active)
         XCTAssertFalse(result.waterDue)

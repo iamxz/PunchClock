@@ -5,9 +5,11 @@ public enum PunchTarget {
     public static func resolve(record: DayRecord,
                                now: Date,
                                settings: Settings,
+                               leaves: [LeaveRecord],
                                calendar: Calendar = .current) -> PunchTask {
         if !record.morningDone { return .morning }
-        if !AttendanceRule.isEveningComplete(record, settings: settings, on: now, calendar: calendar) { return .evening }
+        if !AttendanceRule.isEveningComplete(record, settings: settings, on: now,
+                                             leaves: leaves, calendar: calendar) { return .evening }
         let hour = calendar.component(.hour, from: now)
         return hour < 12 ? .morning : .evening
     }

@@ -7,8 +7,10 @@ final class ScheduleEvaluatorTests: XCTestCase {
 
     private func reminders(_ date: Date,
                            settings: Settings = .default,
-                           record: DayRecord = DayRecord()) -> [PunchTask] {
-        evaluator.pendingReminders(now: date, settings: settings, record: record, calendar: cal)
+                           record: DayRecord = DayRecord(),
+                           leaves: [LeaveRecord] = []) -> [PunchTask] {
+        evaluator.pendingReminders(now: date, settings: settings, record: record,
+                                   leaves: leaves, calendar: cal)
     }
 
     func testBeforeMorningWindowNoReminders() {
@@ -69,9 +71,42 @@ final class ScheduleEvaluatorTests: XCTestCase {
         XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), settings: settings), [])
     }
 
-    func testSkippedNoReminders() {
-        let record = DayRecord(skipped: true)
-        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), record: record), [])
+    func testFullDayLeaveNoReminders() {
+        let leaves = [TestTime.fullDayLeave(on: TestTime.monday)]
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), leaves: leaves), [])
+    }
+
+    // MARK: - 请假期间的提醒抑制
+
+    /// 上午请假 09:00–11:00：这段时间不唠叨，11:00 一结束就照常催上班卡。
+    func testMorningLeaveSilencesRemindersUntilItEnds() {
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (9, 0), to: (11, 0))]
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 9, 0), leaves: leaves), [])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 59), leaves: leaves), [])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 11, 0), leaves: leaves), [.morning])
+    }
+
+    /// 下午请假 16:00–18:00：请假期间不打扰，结束后仍催那张下班卡。
+    func testAfternoonLeaveSilencesEveningReminderOnlyWhileOnLeave() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (16, 0), to: (18, 0))]
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 16, 0), record: record, leaves: leaves), [])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 17, 59), record: record, leaves: leaves), [])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 0), record: record, leaves: leaves), [.evening])
+    }
+
+    /// 上午请假后 11:05 才上班：下班线顺延到 18:05，那时照常提醒。
+    func testMorningLeaveStillRemindsAtShortenedLeaveTime() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 11, 5)])
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (9, 0), to: (11, 0))]
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 4), record: record, leaves: leaves), [])
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 18, 5), record: record, leaves: leaves), [.evening])
+    }
+
+    /// 未来的请假不影响今天。
+    func testFutureLeaveDoesNotAffectToday() {
+        let leaves = [TestTime.fullDayLeave(on: TestTime.date(2026, 9, 20))]
+        XCTAssertEqual(reminders(TestTime.date(2026, 9, 14, 10, 0), leaves: leaves), [.morning])
     }
 
     func testInvalidMorningTimeYieldsNoMorningReminder() {

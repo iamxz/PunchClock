@@ -7,11 +7,12 @@ final class PunchFeedbackTests: XCTestCase {
     private func text(_ task: PunchTask,
                       record: DayRecord,
                       punchedAt: Date,
+                      leaves: [LeaveRecord] = [],
                       minHours: Double = 8) -> String? {
         var settings = Settings.default
         settings.workDurationHours = minHours
         return PunchFeedback.text(task: task, record: record, settings: settings,
-                                  punchedAt: punchedAt, calendar: cal)
+                                  leaves: leaves, punchedAt: punchedAt, calendar: cal)
     }
 
     func testMorningAlwaysNil() {
@@ -55,8 +56,41 @@ final class PunchFeedbackTests: XCTestCase {
         let record = DayRecord(morningPunches: [morning], eveningPunches: [evening])
 
         let message = PunchFeedback.text(task: .evening, record: record, settings: settings,
-                                         punchedAt: evening, calendar: utc)
+                                         leaves: [], punchedAt: evening, calendar: utc)
         XCTAssertTrue(message?.contains("08:00") ?? false, message ?? "nil")
+    }
+
+    /// 请假抵扣后：文案要说清「请了几小时、还需满几小时」。
+    func testLeaveShortensRequiredHoursInMessage() {
+        let morning = TestTime.date(2026, 9, 14, 9, 0)
+        let evening = TestTime.date(2026, 9, 14, 15, 0)
+        let record = DayRecord(morningPunches: [morning], eveningPunches: [evening])
+        let leaves = [TestTime.leave(on: TestTime.monday, from: (16, 0), to: (18, 0))]
+        let message = text(.evening, record: record, punchedAt: evening,
+                           leaves: leaves, minHours: 9)
+        XCTAssertTrue(message?.contains("今天请假 2 小时") ?? false, message ?? "nil")
+        XCTAssertTrue(message?.contains("满 7 小时") ?? false, message ?? "nil")
+        XCTAssertTrue(message?.contains("还差 1 小时") ?? false, message ?? "nil")
+    }
+
+    /// 整天请假还顺手打了张卡：告诉他不用打了，而不是催他凑时长。
+    /// 有上班卡时 15:00 已满足「应工作 0 小时」，判定直接完成、无提示；
+    /// 只有缺一头卡才会走到这句话。
+    func testEveningOnFullDayLeaveSaysNoPunchNeeded() {
+        let evening = TestTime.date(2026, 9, 14, 15, 0)
+        let record = DayRecord(eveningPunches: [evening])
+        let leaves = [TestTime.fullDayLeave(on: TestTime.monday)]
+        let message = text(.evening, record: record, punchedAt: evening, leaves: leaves)
+        XCTAssertEqual(message, "已记录 15:00；今天已整天请假，无需打卡。")
+    }
+
+    /// 整天请假与打卡并存 = 已满足，不再啰嗦。
+    func testFullDayLeaveWithBothPunchesReturnsNil() {
+        let evening = TestTime.date(2026, 9, 14, 15, 0)
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [evening])
+        let leaves = [TestTime.fullDayLeave(on: TestTime.monday)]
+        XCTAssertNil(text(.evening, record: record, punchedAt: evening, leaves: leaves))
     }
 
     func testRemainingUnderOneMinute() {
