@@ -20,23 +20,28 @@ struct PunchToolView: View {
     @State private var pendingDeletion: PunchEditorTarget?
 
     var body: some View {
-        VStack(spacing: 16) {
-            errorBanner
+        // 整页一个大滚动：滚动条贴窗口右缘，今日打卡区也随页面滚动。
+        ScrollView {
+            VStack(spacing: 16) {
+                errorBanner
 
-            TodayPunchCard(
-                model: model,
-                onAdd: { task in
-                    editor = PunchEditorTarget(task: task, index: nil, initial: model.now)
-                },
-                onEdit: { task, index, date in
-                    editor = PunchEditorTarget(task: task, index: index, initial: date)
-                },
-                onDelete: { task, index, date in
-                    pendingDeletion = PunchEditorTarget(task: task, index: index, initial: date)
-                }
-            )
+                TodayPunchCard(
+                    model: model,
+                    onAdd: { task in
+                        editor = PunchEditorTarget(task: task, index: nil, initial: model.now)
+                    },
+                    onEdit: { task, index, date in
+                        editor = PunchEditorTarget(task: task, index: index, initial: date)
+                    },
+                    onDelete: { task, index, date in
+                        pendingDeletion = PunchEditorTarget(task: task, index: index, initial: date)
+                    }
+                )
 
-            StatisticsView(model: model)
+                StatisticsView(model: model)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity)
         }
         .sheet(item: $editor) { target in
             PunchTimeEditor(model: model, target: target)

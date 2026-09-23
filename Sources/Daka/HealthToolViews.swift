@@ -91,8 +91,8 @@ struct WaterToolView: View {
                 }
                 .formStyle(.grouped)
             }
+            .padding(20)
         }
-        .overlayScrollers()
     }
 
     private var rangePicker: some View {
@@ -195,8 +195,8 @@ struct MovementToolView: View {
                 }
                 .formStyle(.grouped)
             }
+            .padding(20)
         }
-        .overlayScrollers()
     }
 
     private var rangePicker: some View {

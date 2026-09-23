@@ -13,7 +13,7 @@ struct ControlCenterView: View {
             }
             detail(for: model.selectedSidebar)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(20)
+                .overlayScrollers()
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -73,6 +73,8 @@ struct ControlCenterView: View {
 
     @ViewBuilder
     private func detail(for selection: SidebarSelection) -> some View {
+        // 内容不留容器边距：让各页的滚动视图贴满窗口，滚动条出现在窗口最右侧；
+        // 页面内边距由各自在滚动内容里处理（打卡/喝水/久坐），grouped Form 自带留白。
         switch selection {
         case .tool(.punch):
             PunchToolView(model: model)

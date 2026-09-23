@@ -65,35 +65,32 @@ struct StatisticsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(spacing: 12) {
-                    metricCard("本月打卡", "\(punchDays) 天", "checkmark.circle")
-                    metricCard("连续打卡", "\(model.currentStreak) 天", "flame")
-                    metricCard("平均上班", averageText, "clock")
-                    metricCard("缺卡", "\(missedDays) 天", "exclamationmark.triangle")
-                    metricCard("本月请假", Statistics.leaveDaysText(model.monthLeaveDays(month: displayedMonth)) + " 天", "figure.walk")
-                }
-
-                CalendarView(displayedMonth: $displayedMonth,
-                             records: model.records,
-                             settings: model.settings,
-                             leaves: model.leaves,
-                             now: model.now,
-                             onAddLeave: { leaveRequest = LeaveEditRequest(date: $0.date, leave: nil) },
-                             onEditLeave: { cell, leave in
-                                 leaveRequest = LeaveEditRequest(date: cell.date, leave: leave)
-                             },
-                             onCancelLeave: { cancelLeave($0) },
-                             onMakeUp: { makeUpRequest = makeUpRequest(for: $0) },
-                             onClearPunches: { pendingClear = $0 })
-                .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.records)
-                .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.leaves)
-
-                workDurationChart
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 12) {
+                metricCard("本月打卡", "\(punchDays) 天", "checkmark.circle")
+                metricCard("连续打卡", "\(model.currentStreak) 天", "flame")
+                metricCard("平均上班", averageText, "clock")
+                metricCard("缺卡", "\(missedDays) 天", "exclamationmark.triangle")
+                metricCard("本月请假", Statistics.leaveDaysText(model.monthLeaveDays(month: displayedMonth)) + " 天", "figure.walk")
             }
+
+            CalendarView(displayedMonth: $displayedMonth,
+                         records: model.records,
+                         settings: model.settings,
+                         leaves: model.leaves,
+                         now: model.now,
+                         onAddLeave: { leaveRequest = LeaveEditRequest(date: $0.date, leave: nil) },
+                         onEditLeave: { cell, leave in
+                             leaveRequest = LeaveEditRequest(date: cell.date, leave: leave)
+                         },
+                         onCancelLeave: { cancelLeave($0) },
+                         onMakeUp: { makeUpRequest = makeUpRequest(for: $0) },
+                         onClearPunches: { pendingClear = $0 })
+            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.records)
+            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.leaves)
+
+            workDurationChart
         }
-        .overlayScrollers()
         .sheet(item: $makeUpRequest) { request in
             MakeUpPunchEditor(model: model, request: request)
         }
