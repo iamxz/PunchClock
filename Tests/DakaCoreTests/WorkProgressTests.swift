@@ -73,9 +73,11 @@ final class WorkProgressTests: XCTestCase {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
         let now = TestTime.date(2026, 9, 14, 13, 0)
         let leaves = [TestTime.leave(on: TestTime.monday, from: (10, 0), to: (11, 0))]
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: leaves),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default,
+                                            leaves: leaves, calendar: TestTime.calendar),
                        3 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: leaves),
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default,
+                                             leaves: leaves, calendar: TestTime.calendar),
                        3.0 / 8.0, accuracy: 0.001)
     }
 
@@ -85,18 +87,22 @@ final class WorkProgressTests: XCTestCase {
                                eveningPunches: [TestTime.date(2026, 9, 14, 16, 0)])
         let now = TestTime.date(2026, 9, 14, 16, 0)
         let leaves = [TestTime.leave(on: TestTime.monday, from: (16, 0), to: (18, 0))]
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: leaves),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default,
+                                            leaves: leaves, calendar: TestTime.calendar),
                        7 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: leaves), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default,
+                                             leaves: leaves, calendar: TestTime.calendar), 1)
     }
 
     /// 整天请假还没打卡时进度是 0（没什么可推进的），误打一张卡后直接满格。
     func testFullDayLeaveProgress() {
         let now = TestTime.date(2026, 9, 14, 13, 0)
         let leaves = [TestTime.fullDayLeave(on: TestTime.monday)]
-        XCTAssertEqual(WorkProgress.fraction(DayRecord(), now: now, settings: .default, leaves: leaves), 0)
+        XCTAssertEqual(WorkProgress.fraction(DayRecord(), now: now, settings: .default,
+                                             leaves: leaves, calendar: TestTime.calendar), 0)
         let punched = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
-        XCTAssertEqual(WorkProgress.fraction(punched, now: now, settings: .default, leaves: leaves), 1)
+        XCTAssertEqual(WorkProgress.fraction(punched, now: now, settings: .default,
+                                             leaves: leaves, calendar: TestTime.calendar), 1)
     }
 
     func testHoursTextUnderOneHourShowsMinutes() {
