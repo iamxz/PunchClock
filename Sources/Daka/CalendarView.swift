@@ -248,6 +248,11 @@ public struct CalendarView: View {
         case .leave, .none: break
         case .pending: parts.append("待打卡")
         }
+        // 迟到不改日历配色，只在这里说清楚超了弹性时间多久。
+        if let late = AttendanceRule.lateBy(records[cell.dateKey] ?? DayRecord(),
+                                            settings: settings, on: cell.date, calendar: calendar) {
+            parts.append("迟到 \(Self.hoursText(late))")
+        }
         // 请假单独说：半天假的日子可以既是「已打卡」又带请假时段。
         parts += leaveNotes(for: cell)
 

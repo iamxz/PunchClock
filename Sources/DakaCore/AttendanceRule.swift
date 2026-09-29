@@ -13,13 +13,56 @@ public enum AttendanceRule {
         windowStart(settings, on: day, calendar: calendar)?.addingTimeInterval(settings.flexDuration)
     }
 
+    /// 考勤起点：下班线、合格下班卡、进度环、工时统计共用的唯一基准。
+    /// 按弹性方式分派，早到能不能早走、晚到顺延多少，全部只在这里决定一次。
     public static func effectiveStart(_ record: DayRecord,
                                       settings: Settings,
                                       on day: Date,
                                       calendar: Calendar = .current) -> Date? {
         guard let morning = record.morningDoneAt else { return nil }
         guard let start = windowStart(settings, on: day, calendar: calendar) else { return nil }
-        return max(start, morning)
+        switch settings.flexMode {
+        case .elasticBoth:
+            // 起点夹进「上班时间 ± 弹性时间」：早到不能更早走，晚到也不能更晚走。
+            return min(max(morning, start.addingTimeInterval(-settings.flexDuration)),
+                       start.addingTimeInterval(settings.flexDuration))
+        case .elasticBackward:
+            return max(start, morning)
+        }
+    }
+
+    /// 当天工时：考勤起点 → 最后一张合格下班卡，如实反映在岗时长，超出应工作时长也不截断。
+    /// 没有上班卡或没有合格下班卡时为 nil。统计、日历格都走这一条，别处不要再自己相减。
+    public static func workDuration(_ record: DayRecord,
+                                    settings: Settings,
+                                    on day: Date,
+                                    leaves: [LeaveRecord],
+                                    calendar: Calendar = .current) -> TimeInterval? {
+        guard let start = effectiveStart(record, settings: settings, on: day, calendar: calendar),
+              let evening = effectiveEveningPunch(record, settings: settings, on: day,
+                                                  leaves: leaves, calendar: calendar),
+              evening >= start else { return nil }
+        return evening.timeIntervalSince(start)
+    }
+
+    /// 迟到多久：上班卡晚于「上班时间 + 弹性时间」的超出量，否则 nil。
+    /// 是否记迟到由 `recordsLateArrival` 单独决定，与弹性方式无关；没上班卡时无从判迟到。
+    public static func lateBy(_ record: DayRecord,
+                              settings: Settings,
+                              on day: Date,
+                              calendar: Calendar = .current) -> TimeInterval? {
+        guard settings.recordsLateArrival,
+              let morning = record.morningDoneAt,
+              let deadline = windowStart(settings, on: day, calendar: calendar)?
+                .addingTimeInterval(settings.flexDuration) else { return nil }
+        return morning > deadline ? morning.timeIntervalSince(deadline) : nil
+    }
+
+    public static func isLate(_ record: DayRecord,
+                              settings: Settings,
+                              on day: Date,
+                              calendar: Calendar = .current) -> Bool {
+        lateBy(record, settings: settings, on: day, calendar: calendar) != nil
     }
 
     public static func expectedLeave(_ record: DayRecord,
@@ -81,13 +124,14 @@ public enum AttendanceRule {
             >= settings.workDuration
     }
 
-    /// 合格下班卡：打卡时刻不早于「上班卡 + 扣除请假后应工作的时长」。
+    /// 合格下班卡：打卡时刻不早于「考勤起点 + 扣除请假后应工作的时长」。
+    /// `start` 必须是 `effectiveStart`（考勤起点）而不是原始上班卡，否则早到会换提前的下班线。
     /// 只比较绝对时刻，不依赖日历时区，因此调用方传入的日历时区
     /// 与打卡记录构造时区不一致时仍能正确判定。
     public static func isQualifyingEveningPunch(_ punch: Date,
-                                                morning: Date,
+                                                start: Date,
                                                 requiredWorkDuration: TimeInterval) -> Bool {
-        punch >= morning.addingTimeInterval(requiredWorkDuration)
+        punch >= start.addingTimeInterval(requiredWorkDuration)
     }
 
     public static func effectiveEveningPunch(_ record: DayRecord,
@@ -95,10 +139,10 @@ public enum AttendanceRule {
                                              on day: Date,
                                              leaves: [LeaveRecord],
                                              calendar: Calendar = .current) -> Date? {
-        guard let morning = record.morningDoneAt else { return nil }
+        guard let start = effectiveStart(record, settings: settings, on: day, calendar: calendar) else { return nil }
         let required = requiredWorkDuration(settings, on: day, leaves: leaves, calendar: calendar)
         return record.eveningPunches.filter {
-            isQualifyingEveningPunch($0, morning: morning, requiredWorkDuration: required)
+            isQualifyingEveningPunch($0, start: start, requiredWorkDuration: required)
         }.max()
     }
 

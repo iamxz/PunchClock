@@ -25,11 +25,43 @@ public struct ReminderState: Equatable, Sendable {
 }
 
 public struct Settings: Codable, Equatable, Sendable {
+    /// 考勤弹性方式：只决定上班卡如何换算成「考勤起点」。迟到记账是独立开关，工时统计始终按真实在岗时长。
+    public enum FlexMode: String, Codable, CaseIterable, Sendable {
+        /// 早到早走、晚到晚走，但浮动不超过「弹性时间」。
+        case elasticBoth
+        /// 早到按上班时间起算（不早走），晚到全额顺延补足。
+        case elasticBackward
+
+        public var title: String {
+            switch self {
+            case .elasticBoth: return "前后弹性"
+            case .elasticBackward: return "只往后弹性"
+            }
+        }
+
+        /// 设置页里对「弹性时间」在该模式下的作用说明。
+        public var flexMeaning: String {
+            switch self {
+            case .elasticBoth: return "起点可在上班时间前后各浮动「弹性时间」那么多分钟，再早或再晚都不继续顺延下班线。"
+            case .elasticBackward: return "起点不早于上班时间；晚打上班卡则按实际时刻顺延下班，「弹性时间」在此只用作迟到宽限。"
+            }
+        }
+
+        /// 无法识别的值（例如早已废弃的写法）退回默认，不让整份配置读不出来。
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = FlexMode(rawValue: raw) ?? Settings.default.flexMode
+        }
+    }
+
     public var enabled: Bool
     public var workdays: Set<Int>
     public var workStartTime: String
     public var workDurationHours: Double
     public var flexMinutes: Int
+    public var flexMode: FlexMode
+    /// 是否把「上班卡晚于上班时间 + 弹性时间」记成迟到。与弹性方式无关，两种模式下都可开。
+    public var recordsLateArrival: Bool
     public var reminderIntervalSeconds: TimeInterval
     /// 开机自启（登录项）的开关，关闭后重启应用不会再自动注册。
     public var loginItemEnabled: Bool
@@ -41,6 +73,8 @@ public struct Settings: Codable, Equatable, Sendable {
                 workStartTime: String = "09:00",
                 workDurationHours: Double = 9,
                 flexMinutes: Int = 30,
+                flexMode: FlexMode = .elasticBackward,
+                recordsLateArrival: Bool = false,
                 reminderIntervalSeconds: TimeInterval = 120,
                 loginItemEnabled: Bool = true,
                 scheduledLaunchEnabled: Bool = true) {
@@ -49,6 +83,8 @@ public struct Settings: Codable, Equatable, Sendable {
         self.workStartTime = workStartTime
         self.workDurationHours = workDurationHours
         self.flexMinutes = flexMinutes
+        self.flexMode = flexMode
+        self.recordsLateArrival = recordsLateArrival
         self.reminderIntervalSeconds = reminderIntervalSeconds
         self.loginItemEnabled = loginItemEnabled
         self.scheduledLaunchEnabled = scheduledLaunchEnabled
@@ -66,7 +102,8 @@ public struct Settings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case enabled, workdays
-        case workStartTime, workDurationHours, flexMinutes
+        case workStartTime, workDurationHours, flexMinutes, flexMode
+        case recordsLateArrival
         // Legacy keys kept only for decoder migration
         case morningWindowStart, morningDeadline
         case eveningWindowStart, eveningDeadline
@@ -81,6 +118,8 @@ public struct Settings: Codable, Equatable, Sendable {
 
         self.enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
         self.workdays = try c.decodeIfPresent(Set<Int>.self, forKey: .workdays) ?? d.workdays
+        self.flexMode = try c.decodeIfPresent(FlexMode.self, forKey: .flexMode) ?? d.flexMode
+        self.recordsLateArrival = try c.decodeIfPresent(Bool.self, forKey: .recordsLateArrival) ?? d.recordsLateArrival
         self.reminderIntervalSeconds = try c.decodeIfPresent(TimeInterval.self, forKey: .reminderIntervalSeconds) ?? d.reminderIntervalSeconds
         self.loginItemEnabled = try c.decodeIfPresent(Bool.self, forKey: .loginItemEnabled) ?? d.loginItemEnabled
         self.scheduledLaunchEnabled = try c.decodeIfPresent(Bool.self, forKey: .scheduledLaunchEnabled) ?? d.scheduledLaunchEnabled
@@ -126,6 +165,8 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(workStartTime, forKey: .workStartTime)
         try c.encode(workDurationHours, forKey: .workDurationHours)
         try c.encode(flexMinutes, forKey: .flexMinutes)
+        try c.encode(flexMode, forKey: .flexMode)
+        try c.encode(recordsLateArrival, forKey: .recordsLateArrival)
         try c.encode(reminderIntervalSeconds, forKey: .reminderIntervalSeconds)
         try c.encode(loginItemEnabled, forKey: .loginItemEnabled)
         try c.encode(scheduledLaunchEnabled, forKey: .scheduledLaunchEnabled)

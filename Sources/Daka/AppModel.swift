@@ -54,6 +54,8 @@ final class AppModel: ObservableObject {
 
     func updateWorkStart(_ hhmm: String) { updateSettings { $0.workStartTime = hhmm } }
     func setFlexMinutes(_ minutes: Int) { updateSettings { $0.flexMinutes = max(0, minutes) } }
+    func setFlexMode(_ mode: DakaCore.Settings.FlexMode) { updateSettings { $0.flexMode = mode } }
+    func setRecordsLateArrival(_ on: Bool) { updateSettings { $0.recordsLateArrival = on } }
 
     private let store: PunchStore
     private let clock: AdjustableClock

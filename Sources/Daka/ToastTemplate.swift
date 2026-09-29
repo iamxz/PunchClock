@@ -106,13 +106,9 @@ enum ToastTemplate: String, CaseIterable, Identifiable {
         case .punchEvening:
             return ToastTemplate.punch(task: .evening, feedback: nil)
         case .punchEveningPartial:
-            return ToastTemplate.punch(
-                task: .evening,
-                feedback: "已记录 18:30；距上班满 8 小时还差 2 小时 15 分钟，满后自动完成。")
+            return ToastTemplate.punchPartialSample(hours: 8)
         case .punchEveningMissingMorning:
-            return ToastTemplate.punch(
-                task: .evening,
-                feedback: "已记录 18:30；今天还没有上班打卡，需先打上班卡；下班需满 8 小时才算完成。")
+            return ToastTemplate.punchMissingMorningSample(hours: 8)
         case .waterReminder:
             return ToastTemplate.health(kind: .water, minutes: 60)
         case .movementReminder:
@@ -155,9 +151,12 @@ enum ToastTemplate: String, CaseIterable, Identifiable {
     }
 
     /// 预览样例：下班已记录但未满工作时长（hours 传当前设置里的每日工作时长）。
+    /// 场景固定为「09:00 起算、在下班线前 30 分钟打了下班卡」，时刻随时长浮动。
     static func punchPartialSample(hours: Double) -> ToastCenter.Toast {
-        punch(task: .evening,
-              feedback: "已记录 18:30；距上班满 \(hoursText(hours)) 小时还差 2 小时 15 分钟，满后自动完成。")
+        let deadline = (9 + hours) * 3600
+        return punch(task: .evening,
+                     feedback: "已记录 \(clockText(deadline - 1800))；今天需做满 \(hoursText(hours)) 小时，"
+                         + "\(clockText(deadline)) 之后才算完成，还差 30 分钟。")
     }
 
     /// 预览样例：下班已记录但今天还缺上班卡。
@@ -169,5 +168,11 @@ enum ToastTemplate: String, CaseIterable, Identifiable {
     /// 工作时长文案：整数不带小数点（与设置页保持一致）。
     static func hoursText(_ hours: Double) -> String {
         hours == hours.rounded() ? String(Int(hours)) : String(format: "%.1f", hours)
+    }
+
+    /// 距当天 00:00 的秒数 → `HH:MM`（样例场景不跨零点）。
+    private static func clockText(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds) / 60
+        return String(format: "%02d:%02d", minutes / 60 % 24, minutes % 60)
     }
 }

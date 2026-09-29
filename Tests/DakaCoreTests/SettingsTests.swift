@@ -25,6 +25,38 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(decoded, s)
     }
 
+    func testFlexModeRoundTripAndMissingKeyDefaults() throws {
+        var s = Settings.default
+        s.flexMode = .elasticBoth
+        s.recordsLateArrival = true
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(Settings.self, from: data)
+        XCTAssertEqual(decoded.flexMode, .elasticBoth)
+        XCTAssertTrue(decoded.recordsLateArrival)
+
+        // 老 data.json 没有这两个键：弹性口径全部落默认，升级后行为不变。
+        var stripped = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        stripped.removeValue(forKey: "flexMode")
+        stripped.removeValue(forKey: "recordsLateArrival")
+        let jsonData = try JSONSerialization.data(withJSONObject: stripped)
+        let legacy = try JSONDecoder().decode(Settings.self, from: jsonData)
+        XCTAssertEqual(legacy.flexMode, .elasticBackward)
+        XCTAssertFalse(legacy.recordsLateArrival)
+    }
+
+    /// 已废弃的写法（「严格执行时间段」的弹性方式、「加班不计工时」）留在配置里
+    /// 既不能让整份配置读不出来，也不能再影响行为。
+    func testUnknownFlexModeFallsBackToDefault() throws {
+        var raw = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Settings.default)) as! [String: Any]
+        raw["flexMode"] = "strictWindow"
+        raw["excludesOvertime"] = true
+        let data = try JSONSerialization.data(withJSONObject: raw)
+        let s = try JSONDecoder().decode(Settings.self, from: data)
+        XCTAssertEqual(s.flexMode, .elasticBackward)
+        let written = try JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as! [String: Any]
+        XCTAssertFalse(written.keys.contains("excludesOvertime"), "不该再把废弃键写回去")
+    }
+
     func testLegacyJSONMigratesOldKeys() throws {
         let legacy = """
         {

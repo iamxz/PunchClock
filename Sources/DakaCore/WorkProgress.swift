@@ -3,18 +3,21 @@ import Foundation
 /// 今天已工作时长与圆环进度。未打上班卡即无意义。
 public enum WorkProgress {
     /// 已工作时长；未打上班卡时 nil。
-    /// 终点：若有合格下班卡取之（实际总时长），否则取 now。落在区间内的请假时长不计。
+    /// 起点是考勤起点（早到按上班时间算），终点：若有合格下班卡取之（实际总时长），否则取 now。
+    /// 落在区间内的请假时长不计。
     public static func elapsed(_ record: DayRecord,
                                now: Date,
                                settings: Settings,
                                leaves: [LeaveRecord],
                                calendar: Calendar = .current) -> TimeInterval? {
-        guard let morning = record.morningDoneAt else { return nil }
+        guard let start = AttendanceRule.effectiveStart(record, settings: settings, on: now,
+                                                        calendar: calendar) else { return nil }
         let end = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: now,
                                                        leaves: leaves, calendar: calendar) ?? now
         let onLeave = LeaveRules.slices(on: now, in: leaves, calendar: calendar)
-            .reduce(TimeInterval(0)) { $0 + LeaveRules.overlap((morning, end), ($1.start, $1.end)) }
-        return max(0, end.timeIntervalSince(morning) - onLeave)
+            .reduce(TimeInterval(0)) { $0 + LeaveRules.overlap((start, end), ($1.start, $1.end)) }
+        let present = max(0, end.timeIntervalSince(start) - onLeave)
+        return present
     }
 
     /// 圆环进度 0...1；未打上班卡为 0，扣除请假后无需工作即视为 1。

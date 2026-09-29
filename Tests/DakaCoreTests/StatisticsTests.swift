@@ -22,8 +22,9 @@ final class StatisticsTests: XCTestCase {
     private func compute(_ recs: [String: DayRecord],
                          leaves: [LeaveRecord] = [],
                          now: Date? = nil,
-                         rangeDays: Int = 7) -> StatisticsSummary {
-        Statistics.compute(records: recs, settings: .default, leaves: leaves,
+                         rangeDays: Int = 7,
+                         settings: Settings = .default) -> StatisticsSummary {
+        Statistics.compute(records: recs, settings: settings, leaves: leaves,
                            now: now ?? self.now, rangeDays: rangeDays, calendar: cal)
     }
 
@@ -47,6 +48,27 @@ final class StatisticsTests: XCTestCase {
         XCTAssertEqual(stat(s, "2026-09-14")?.workDuration, 33000)
         XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 32700)
         XCTAssertEqual(s.averageWorkDuration ?? 0, 32850, accuracy: 0.5)
+    }
+
+    /// 8:30 上班按 9:00 起算：18:00 走只有 9 小时，早到的半小时不计工时。
+    func testEarlyPunchDurationCountsFromWorkStart() {
+        let recs = records([
+            (TestTime.date(2026, 9, 15), true, true,
+             TestTime.date(2026, 9, 15, 8, 30), TestTime.date(2026, 9, 15, 18, 0))
+        ])
+        let s = compute(recs)
+        XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 9 * 3600)
+    }
+
+    /// 加班那段如实进当天工时，平均值也按真实时长算，不做封顶。
+    func testOvertimeStaysInDurationAndAverage() {
+        let recs = records([
+            (TestTime.date(2026, 9, 15), true, true,
+             TestTime.date(2026, 9, 15, 9, 17), TestTime.date(2026, 9, 15, 19, 0))
+        ])
+        let s = compute(recs)
+        XCTAssertEqual(stat(s, "2026-09-15")?.workDuration, 9 * 3600 + 43 * 60)
+        XCTAssertEqual(s.averageWorkDuration ?? 0, 9 * 3600 + 43 * 60, accuracy: 0.5)
     }
 
     func testEveningUnderMinimumDoesNotComplete() {

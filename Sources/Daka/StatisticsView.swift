@@ -54,13 +54,13 @@ struct StatisticsView: View {
         grid.weeks.joined().compactMap { $0 }.filter { $0.status == .missed }.count
     }
 
+    /// 本月迟到次数。只有会判迟到的弹性方式才显示这张卡。
+    private var lateDays: Int {
+        grid.weeks.joined().compactMap { $0 }.filter { $0.isLate }.count
+    }
+
     private var averageWorkDuration: TimeInterval? {
-        let durations = grid.weeks.joined().compactMap { $0 }
-            .filter { $0.status == .done }
-            .compactMap { cell -> TimeInterval? in
-                guard let m = cell.morningDoneAt, let e = cell.eveningDoneAt, e >= m else { return nil }
-                return e.timeIntervalSince(m)
-            }
+        let durations = grid.weeks.joined().compactMap { $0 }.compactMap(\.workDuration)
         return durations.isEmpty ? nil : durations.reduce(0, +) / Double(durations.count)
     }
 
@@ -70,6 +70,9 @@ struct StatisticsView: View {
                 metricCard("本月打卡", "\(punchDays) 天", "checkmark.circle")
                 metricCard("连续打卡", "\(model.currentStreak) 天", "flame")
                 metricCard("平均上班", averageText, "clock")
+                if model.settings.recordsLateArrival {
+                    metricCard("本月迟到", "\(lateDays) 次", "calendar.badge.exclamationmark")
+                }
                 metricCard("缺卡", "\(missedDays) 天", "exclamationmark.triangle")
                 metricCard("本月请假", Statistics.leaveDaysText(model.monthLeaveDays(month: displayedMonth)) + " 天", "figure.walk")
             }

@@ -26,14 +26,16 @@ public enum PunchFeedback {
             let need = AttendanceRule.requiredWorkDuration(settings, on: punchedAt,
                                                            leaves: leaves, calendar: calendar)
             let needHours = need / 3600
-            let leaveNote = onLeave > 0 ? "今天请假 \(hoursText(onLeave / 3600)) 小时，" : ""
-            guard let morning = record.morningDoneAt else {
+            let leaveNote = onLeave > 0 ? "请假 \(hoursText(onLeave / 3600)) 小时，" : ""
+            if record.morningDoneAt == nil {
                 return "已记录 \(time)；今天还没有上班打卡，需先打上班卡；\(leaveNote)下班需满 \(hoursText(needHours)) 小时才算完成。"
             }
-            let expectedLeave = AttendanceRule.expectedLeave(record, settings: settings, on: punchedAt,
-                                                             leaves: leaves, calendar: calendar)
-            let deadline = expectedLeave ?? morning.addingTimeInterval(need)
-            return "已记录 \(time)；\(leaveNote)距上班满 \(hoursText(needHours)) 小时还差 \(remainingText(deadline.timeIntervalSince(punchedAt)))，满后自动完成。"
+            // 下班线只由考勤起点算出（早到按上班时间起算），文案直接报这条线，不要说「距上班多久」。
+            guard let deadline = AttendanceRule.expectedLeave(record, settings: settings, on: punchedAt,
+                                                              leaves: leaves, calendar: calendar) else { return nil }
+            return "已记录 \(time)；\(leaveNote)今天需做满 \(hoursText(needHours)) 小时，"
+                + "\(timeText(deadline, calendar: calendar)) 之后才算完成，"
+                + "还差 \(remainingText(deadline.timeIntervalSince(punchedAt)))。"
         }
     }
 

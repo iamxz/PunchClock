@@ -28,6 +28,23 @@ final class AttendanceRuleTests: XCTestCase {
         XCTAssertEqual(leave(record, on: day), TestTime.date(2026, 9, 14, 18, 0))
     }
 
+    /// 8:30 上班按 9:00 起算：17:30 的下班卡还差半小时，不能算完成。
+    func testEarlyPunchNeedsFullDayFromWorkStart() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 8, 30)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 17, 30)])
+        let day = TestTime.date(2026, 9, 14, 17, 30)
+        XCTAssertNil(AttendanceRule.effectiveEveningPunch(record, settings: settings, on: day,
+                                                          leaves: [], calendar: cal))
+        XCTAssertFalse(complete(record, on: day))
+    }
+
+    /// 早到不早走：8:30 上班 → 18:00 的下班卡刚好做满 9 小时。
+    func testEarlyPunchQualifiesAtFlooredDeadline() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 8, 30)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 18, 0)])
+        XCTAssertTrue(complete(record, on: TestTime.date(2026, 9, 14, 18, 0)))
+    }
+
     func testPunchWithinFlexShiftsLeave() {
         let day = TestTime.date(2026, 9, 14, 9, 16)
         let record = DayRecord(morningPunches: [day])
@@ -85,7 +102,7 @@ final class AttendanceRuleTests: XCTestCase {
             settings: .default,
             on: TestTime.date(2026, 9, 14, 21, 0),
             leaves: [],
-            calendar: Calendar.current
+            calendar: cal
         )
 
         XCTAssertEqual(result, TestTime.date(2026, 9, 14, 18, 0))
@@ -105,6 +122,115 @@ final class AttendanceRuleTests: XCTestCase {
                        TestTime.date(2026, 9, 14, 9, 0))
         XCTAssertEqual(AttendanceRule.windowEnd(settings, on: TestTime.monday, calendar: cal),
                        TestTime.date(2026, 9, 14, 9, 30))
+    }
+
+    // MARK: - 弹性方式（只管考勤起点）
+
+    /// 弹性方式与迟到记账是两个正交开关，用例按需要单独开合。
+    private func rule(flex: Settings.FlexMode = .elasticBackward,
+                      late: Bool = false) -> Settings {
+        var s = Settings.default
+        s.flexMode = flex
+        s.recordsLateArrival = late
+        return s
+    }
+
+    /// 9:00 上班、做满 9 小时：下班线随考勤起点浮动。
+    private func line(_ flex: Settings.FlexMode, _ punch: Date) -> Date? {
+        AttendanceRule.expectedLeave(DayRecord(morningPunches: [punch]), settings: rule(flex: flex),
+                                     on: punch, leaves: [], calendar: cal)
+    }
+    private func late(_ s: Settings, _ punch: Date) -> Bool {
+        AttendanceRule.isLate(DayRecord(morningPunches: [punch]), settings: s,
+                              on: punch, calendar: cal)
+    }
+
+    func testDefaultModeIsBackwardOnly() {
+        XCTAssertEqual(Settings.default.flexMode, .elasticBackward)
+        // 默认模式下起点就是今天的行为：早到按 9:00、晚到全额顺延。
+        XCTAssertEqual(line(.elasticBackward, TestTime.date(2026, 9, 14, 7, 50)),
+                       TestTime.date(2026, 9, 14, 18, 0))
+        XCTAssertEqual(line(.elasticBackward, TestTime.date(2026, 9, 14, 10, 0)),
+                       TestTime.date(2026, 9, 14, 19, 0))
+    }
+
+    func testElasticBothClampsToFlexBand() {
+        // 7:50 与 8:30 等效：最早只按 09:00 - 弹性 起算。
+        XCTAssertEqual(line(.elasticBoth, TestTime.date(2026, 9, 14, 7, 50)),
+                       TestTime.date(2026, 9, 14, 17, 30))
+        XCTAssertEqual(line(.elasticBoth, TestTime.date(2026, 9, 14, 8, 30)),
+                       TestTime.date(2026, 9, 14, 17, 30))
+        XCTAssertEqual(line(.elasticBoth, TestTime.date(2026, 9, 14, 9, 17)),
+                       TestTime.date(2026, 9, 14, 18, 17))
+        // 9:50 也只顺延到 9:30：超出弹性带的部分不再往后挪下班线。
+        XCTAssertEqual(line(.elasticBoth, TestTime.date(2026, 9, 14, 9, 50)),
+                       TestTime.date(2026, 9, 14, 18, 30))
+    }
+
+    func testBothModesFloorEarlyPunchTheSameWay() {
+        for flex in [Settings.FlexMode.elasticBackward, .elasticBoth] {
+            // 早到不早走：起点不早于上班时间（前后弹性最多早到「弹性时间」）。
+            XCTAssertEqual(AttendanceRule.effectiveStart(DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 6, 0)]),
+                                                         settings: rule(flex: flex), on: TestTime.monday,
+                                                         calendar: cal)!.timeIntervalSince(TestTime.monday),
+                           flex == .elasticBoth ? 8.5 * 3600 : 9 * 3600,
+                           "\(flex) 早到被夹住")
+        }
+    }
+
+    // MARK: - 迟到记账（与弹性方式无关）
+
+    func testLateArrivalOffJudgesNobody() {
+        for flex in [Settings.FlexMode.elasticBackward, .elasticBoth] {
+            XCTAssertFalse(late(rule(flex: flex), TestTime.date(2026, 9, 14, 11, 0)),
+                           "开关关着就不判迟到（\(flex)）")
+        }
+    }
+
+    func testLateArrivalGraceIsWorkStartPlusFlexInBothModes() {
+        for flex in [Settings.FlexMode.elasticBackward, .elasticBoth] {
+            let s = rule(flex: flex, late: true)
+            XCTAssertFalse(late(s, TestTime.date(2026, 9, 14, 9, 30)), "宽限线上不算迟到（\(flex)）")
+            XCTAssertTrue(late(s, TestTime.date(2026, 9, 14, 9, 31)), "\(flex)")
+            XCTAssertFalse(late(s, TestTime.date(2026, 9, 14, 8, 0)), "早到不是迟到（\(flex)）")
+        }
+    }
+
+    func testLateMinutesMeasuredFromGraceEdge() {
+        // tooltip 要说「迟到 20 分钟」而不是只说迟到了。
+        XCTAssertEqual(AttendanceRule.lateBy(DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 50)]),
+                                             settings: rule(late: true), on: TestTime.monday, calendar: cal),
+                       20 * 60)
+    }
+
+    func testNoMorningPunchIsNeverLate() {
+        XCTAssertFalse(AttendanceRule.isLate(DayRecord(), settings: rule(late: true),
+                                             on: TestTime.monday, calendar: cal))
+    }
+
+    // MARK: - 工时 = 真实在岗时长
+
+    /// 超出应工作时长的那段照常计入工时，不做封顶。
+    func testOvertimeCountedInFull() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 19, 0)])
+        for flex in [Settings.FlexMode.elasticBackward, .elasticBoth] {
+            XCTAssertEqual(AttendanceRule.workDuration(record, settings: rule(flex: flex),
+                                                       on: TestTime.monday, leaves: [], calendar: cal),
+                           10 * 3600, "\(flex) 加班要如实计入")
+        }
+    }
+
+    /// 老配置里残留的「加班不计工时」标记不再生效：读到它也不该封顶工时。
+    func testLegacyOvertimeFlagIsIgnored() throws {
+        var raw = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Settings.default)) as! [String: Any]
+        raw["excludesOvertime"] = true
+        let s = try JSONDecoder().decode(Settings.self,
+                                        from: try JSONSerialization.data(withJSONObject: raw))
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
+                               eveningPunches: [TestTime.date(2026, 9, 14, 19, 0)])
+        XCTAssertEqual(AttendanceRule.workDuration(record, settings: s, on: TestTime.monday,
+                                                   leaves: [], calendar: cal), 10 * 3600)
     }
 
     // MARK: - 请假抵扣

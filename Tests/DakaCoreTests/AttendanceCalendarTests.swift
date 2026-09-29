@@ -6,12 +6,13 @@ final class AttendanceCalendarTests: XCTestCase {
     /// 2026-09-01 为周二（weekday=3），当月 30 天。
     private var month: Date { TestTime.date(2026, 9, 1) }
 
-    private func record(morning: Bool, evening: Bool,
+    /// `day` 决定默认打卡时刻落在哪一天——记录存在哪一天，卡就得打在那一天。
+    private func record(morning: Bool, evening: Bool, day: Int = 1,
                         mAt: Date? = nil, eAt: Date? = nil) -> DayRecord {
         var r = DayRecord()
-        let day = TestTime.date(2026, 9, 1)
-        let defM = DakaDate.date(on: day, at: "09:00", calendar: cal)!
-        let defE = DakaDate.date(on: day, at: "18:00", calendar: cal)!
+        let on = TestTime.date(2026, 9, day)
+        let defM = DakaDate.date(on: on, at: "09:00", calendar: cal)!
+        let defE = DakaDate.date(on: on, at: "18:00", calendar: cal)!
         r.morningPunches = morning ? [mAt ?? defM] : []
         r.eveningPunches = evening ? [eAt ?? defE] : []
         return r
@@ -28,8 +29,9 @@ final class AttendanceCalendarTests: XCTestCase {
 
     private func grid(_ recs: [String: DayRecord],
                       leaves: [LeaveRecord] = [],
-                      now: Date) -> MonthGrid {
-        AttendanceCalendar.monthGrid(records: recs, settings: .default, leaves: leaves,
+                      now: Date,
+                      settings: Settings = .default) -> MonthGrid {
+        AttendanceCalendar.monthGrid(records: recs, settings: settings, leaves: leaves,
                                      month: month, now: now, calendar: cal)
     }
 
@@ -54,7 +56,7 @@ final class AttendanceCalendarTests: XCTestCase {
     func testStatusClassification() {
         let recs = records([
             (1, record(morning: true, evening: true)),      // 已打卡
-            (2, record(morning: true, evening: true)),      // 已打卡
+            (2, record(morning: true, evening: true, day: 2)), // 已打卡
             (3, record(morning: false, evening: false)),    // 缺卡（过去工作日）
             (6, record(morning: false, evening: false))     // 周日非工作日
         ])
@@ -96,6 +98,33 @@ final class AttendanceCalendarTests: XCTestCase {
         XCTAssertEqual(c?.status, .done)
         XCTAssertEqual(c?.morningDoneAt, mAt)
         XCTAssertEqual(c?.eveningDoneAt, eAt)
+    }
+
+    /// 迟到不新增日历状态：仍是 done，只多带一个 `isLate` 给 tooltip 用。
+    func testLatePunchKeepsDoneStatusButCarriesFlag() {
+        var s = Settings.default
+        s.recordsLateArrival = true
+        let recs = records([
+            (1, record(morning: true, evening: true,
+                       mAt: TestTime.date(2026, 9, 1, 9, 50),
+                       eAt: TestTime.date(2026, 9, 1, 18, 50)))
+        ])
+        let g = grid(recs, now: TestTime.date(2026, 9, 10, 12, 0), settings: s)
+        XCTAssertEqual(cell(g, day: 1)?.status, .done)
+        XCTAssertEqual(cell(g, day: 1)?.isLate, true)
+
+        let loose = grid(recs, now: TestTime.date(2026, 9, 10, 12, 0))
+        XCTAssertFalse(cell(loose, day: 1)?.isLate ?? true, "不开开关就不判迟到")
+    }
+
+    /// 格子自带当天工时（真实在岗时长），UI 不必再自己拿首尾卡相减（那是第四套口径）。
+    func testCellCarriesRealWorkDuration() {
+        let recs = records([
+            (1, record(morning: true, evening: true,
+                       mAt: TestTime.date(2026, 9, 1, 9, 0), eAt: TestTime.date(2026, 9, 1, 19, 0)))
+        ])
+        let g = grid(recs, now: TestTime.date(2026, 9, 10, 12, 0))
+        XCTAssertEqual(cell(g, day: 1)?.workDuration, 10 * 3600, "超出应工作时长的那 1 小时照实显示")
     }
 
     func testFullDayLeaveOnWeekendStillShowsLeave() {

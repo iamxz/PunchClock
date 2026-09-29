@@ -5,31 +5,31 @@ final class WorkProgressTests: XCTestCase {
     func testNoMorningPunchHasNoElapsedAndZeroFraction() {
         let record = DayRecord(eveningPunches: [TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 18, 0)
-        XCTAssertNil(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []))
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 0)
+        XCTAssertNil(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar))
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 0)
     }
 
     func testFourOfEightHoursIsHalf() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
         let now = TestTime.date(2026, 9, 14, 13, 0)
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar),
                        4 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 4.0 / 9.0, accuracy: 0.01)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 4.0 / 9.0, accuracy: 0.01)
     }
 
     func testOvertimeIsCappedAtOne() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
         let now = TestTime.date(2026, 9, 14, 19, 0)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 1)
     }
 
     func testCompletionUsesQualifyingEveningPunch() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
                                eveningPunches: [TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 20, 0)
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar),
                        9 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 1)
     }
 
     func testIgnoresNonQualifyingEveningPunch() {
@@ -37,7 +37,7 @@ final class WorkProgressTests: XCTestCase {
                                eveningPunches: [TestTime.date(2026, 9, 14, 16, 0),
                                                 TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 21, 0)
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar),
                        9 * 3600)
     }
 
@@ -46,18 +46,18 @@ final class WorkProgressTests: XCTestCase {
                                eveningPunches: [TestTime.date(2026, 9, 14, 17, 0),
                                                 TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 21, 0)
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar),
                        9 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 1)
     }
 
     func testExactlyMinimumIsComplete() {
         let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)],
                                eveningPunches: [TestTime.date(2026, 9, 14, 18, 0)])
         let now = TestTime.date(2026, 9, 14, 18, 0)
-        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: []),
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar),
                        9 * 3600)
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: []), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [], calendar: TestTime.calendar), 1)
     }
 
     func testZeroMinimumIsFull() {
@@ -65,7 +65,20 @@ final class WorkProgressTests: XCTestCase {
         let now = TestTime.date(2026, 9, 14, 9, 30)
         var settings = Settings.default
         settings.workDurationHours = 0
-        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: settings, leaves: []), 1)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: settings, leaves: [],
+                                             calendar: TestTime.calendar), 1)
+    }
+
+    /// 8:30 打到 17:30：按 9:00 起算只做了 8.5 小时，圆环不该满格。
+    func testEarlyPunchCountsFromWorkStart() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 8, 30)])
+        let now = TestTime.date(2026, 9, 14, 17, 30)
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [],
+                                            calendar: TestTime.calendar),
+                       8.5 * 3600)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [],
+                                             calendar: TestTime.calendar),
+                       8.5 / 9.0, accuracy: 0.001)
     }
 
     /// 中间请 1 小时假：进度里的已工作时长要把这一小时扣掉。
@@ -103,6 +116,17 @@ final class WorkProgressTests: XCTestCase {
         let punched = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 0)])
         XCTAssertEqual(WorkProgress.fraction(punched, now: now, settings: .default,
                                              leaves: leaves, calendar: TestTime.calendar), 1)
+    }
+
+    /// 加班如实计入已工作时长，圆环仍封顶在 100%。
+    func testOvertimeKeepsElapsedRealAndRingFull() {
+        let record = DayRecord(morningPunches: [TestTime.date(2026, 9, 14, 9, 17)])
+        let now = TestTime.date(2026, 9, 14, 19, 0)
+        XCTAssertEqual(WorkProgress.elapsed(record, now: now, settings: .default, leaves: [],
+                                           calendar: TestTime.calendar),
+                       9 * 3600 + 43 * 60)
+        XCTAssertEqual(WorkProgress.fraction(record, now: now, settings: .default, leaves: [],
+                                             calendar: TestTime.calendar), 1)
     }
 
     func testHoursTextUnderOneHourShowsMinutes() {

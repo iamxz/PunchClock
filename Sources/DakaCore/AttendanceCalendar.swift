@@ -31,6 +31,10 @@ public struct AttendanceDayCell: Equatable, Sendable {
     public let leaveSlices: [LeaveSlice]
     /// 当天请假占应工作时长比例；非工作日为 0。
     public let leaveFraction: Double
+    /// 当天计入考勤的工时（`AttendanceRule.workDuration`），未完成时为 nil。
+    public let workDuration: TimeInterval?
+    /// 当天上班卡迟到。不改变 `status`，只供 tooltip 与统计说明。
+    public let isLate: Bool
 
     public init(date: Date,
                 dateKey: String,
@@ -43,7 +47,9 @@ public struct AttendanceDayCell: Equatable, Sendable {
                 isToday: Bool,
                 isFuture: Bool,
                 leaveSlices: [LeaveSlice] = [],
-                leaveFraction: Double = 0) {
+                leaveFraction: Double = 0,
+                workDuration: TimeInterval? = nil,
+                isLate: Bool = false) {
         self.date = date
         self.dateKey = dateKey
         self.day = day
@@ -56,6 +62,8 @@ public struct AttendanceDayCell: Equatable, Sendable {
         self.isFuture = isFuture
         self.leaveSlices = leaveSlices
         self.leaveFraction = leaveFraction
+        self.workDuration = workDuration
+        self.isLate = isLate
     }
 }
 
@@ -168,6 +176,12 @@ public enum AttendanceCalendar {
                                  leaveFraction: isWorkday
                                     ? AttendanceRule.leaveFraction(settings, on: date,
                                                                    leaves: leaves, calendar: calendar)
-                                    : 0)
+                                    : 0,
+                                 workDuration: AttendanceRule.workDuration(record, settings: settings,
+                                                                          on: date, leaves: leaves,
+                                                                          calendar: calendar),
+                                 isLate: isWorkday && !fullDayLeave
+                                    && AttendanceRule.isLate(record, settings: settings, on: date,
+                                                             calendar: calendar))
     }
 }

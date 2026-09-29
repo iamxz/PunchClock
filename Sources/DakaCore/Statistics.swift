@@ -13,7 +13,7 @@ public struct DailyStat: Equatable, Sendable {
     public let leaveFraction: Double
     public let morningDoneAt: Date?
     public let eveningDoneAt: Date?
-    /// 实际在岗时长（首张上班卡 → 最后一张合格下班卡），不因请假扣减。
+    /// 计入考勤的在岗时长，见 `AttendanceRule.workDuration`。
     public let workDuration: TimeInterval?
 
     public init(dateKey: String,
@@ -102,10 +102,8 @@ public enum Statistics {
             let effectiveEvening = AttendanceRule.effectiveEveningPunch(record, settings: settings, on: day,
                                                                         leaves: leaves, calendar: calendar)
 
-            var duration: TimeInterval?
-            if let morning = record.morningDoneAt, let evening = effectiveEvening, evening >= morning {
-                duration = evening.timeIntervalSince(morning)
-            }
+            let duration = AttendanceRule.workDuration(record, settings: settings, on: day,
+                                                       leaves: leaves, calendar: calendar)
             if let duration { durations.append(duration) }
 
             days.append(DailyStat(dateKey: key, weekday: weekday, isWorkday: isWorkday,

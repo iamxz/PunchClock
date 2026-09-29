@@ -28,19 +28,31 @@ struct ScheduleSettingsView: View {
                             get: { settingsDateFrom(model.settings.workStartTime, now: model.now) },
                             set: { model.updateWorkStart(settingsHHMM(from: $0)) }),
                            displayedComponents: .hourAndMinute)
+                Picker("弹性方式", selection: Binding(
+                    get: { model.settings.flexMode },
+                    set: { model.setFlexMode($0) })) {
+                    ForEach(DakaCore.Settings.FlexMode.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                Text(model.settings.flexMode.flexMeaning)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Stepper(value: Binding(get: { model.settings.flexMinutes },
                                        set: { model.setFlexMinutes($0) }),
                         in: 0...120, step: 5) {
                     Text("弹性时间：\(model.settings.flexMinutes) 分钟")
                 }
+                Toggle("晚到记迟到", isOn: Binding(get: { model.settings.recordsLateArrival },
+                                                   set: { model.setRecordsLateArrival($0) }))
+                Text("上班卡晚于「上班时间 + 弹性时间」记一次迟到，日历提示与统计页的「本月迟到」跟着出现。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Stepper(value: Binding(get: { model.settings.workDurationHours },
                                        set: { model.setWorkDurationHours($0) }),
                         in: 0.5...12, step: 0.5) {
                     Text("工作时长：\(settingsHoursText(model.settings.workDurationHours)) 小时")
                 }
-                Text("下班提醒随上班卡时间浮动：早到按上班时间算，晚打顺延下班。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("重复提醒") {

@@ -37,6 +37,15 @@ final class PunchFeedbackTests: XCTestCase {
         XCTAssertTrue(message?.contains("16:00") ?? false, message ?? "nil")
     }
 
+    /// 8:30 上班按 9:00 起算：17:30 打下班卡时，文案要说清 18:00 这条线，而不是「距上班 9 小时」。
+    func testEarlyPunchExplainsFlooredDeadline() {
+        let morning = TestTime.date(2026, 9, 14, 8, 30)
+        let evening = TestTime.date(2026, 9, 14, 17, 30)
+        let record = DayRecord(morningPunches: [morning], eveningPunches: [evening])
+        let message = text(.evening, record: record, punchedAt: evening, minHours: 9)
+        XCTAssertEqual(message, "已记录 17:30；今天需做满 9 小时，18:00 之后才算完成，还差 30 分钟。")
+    }
+
     func testEveningWithoutMorningAsksForMorningPunch() {
         let evening = TestTime.date(2026, 9, 14, 16, 0)
         let record = DayRecord(eveningPunches: [evening])
@@ -68,8 +77,9 @@ final class PunchFeedbackTests: XCTestCase {
         let leaves = [TestTime.leave(on: TestTime.monday, from: (16, 0), to: (18, 0))]
         let message = text(.evening, record: record, punchedAt: evening,
                            leaves: leaves, minHours: 9)
-        XCTAssertTrue(message?.contains("今天请假 2 小时") ?? false, message ?? "nil")
+        XCTAssertTrue(message?.contains("请假 2 小时") ?? false, message ?? "nil")
         XCTAssertTrue(message?.contains("满 7 小时") ?? false, message ?? "nil")
+        XCTAssertTrue(message?.contains("16:00 之后才算完成") ?? false, message ?? "nil")
         XCTAssertTrue(message?.contains("还差 1 小时") ?? false, message ?? "nil")
     }
 
