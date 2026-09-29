@@ -31,6 +31,8 @@ final class AppModel: ObservableObject {
     @Published var selectedSidebar: SidebarSelection = .tool(.punch)
     let tools = ToolCatalog.all
 
+    /// 测试面板开关：默认隐藏，需在「关于」页连点应用名解锁。仅本次有效，不跨启动保留。
+    @Published private(set) var debugPanelUnlocked = false
     @Published private(set) var healthSettings: HealthSettings
     @Published private(set) var healthRecord: DayHealthRecord
 
@@ -369,6 +371,15 @@ final class AppModel: ObservableObject {
 
     // MARK: - 全屏提醒预览（测试面板）
 
+    /// 解锁测试面板（在「关于」页连点应用名触发）。再次进入「关于」页即重新隐藏。
+    /// - Returns: 本次是否刚完成解锁（已解锁过则返回 false）。
+    @discardableResult
+    func unlockDebugPanel() -> Bool {
+        guard !debugPanelUnlocked else { return false }
+        debugPanelUnlocked = true
+        return true
+    }
+
     /// 立即弹出全屏遮罩预览：与真实提醒完全一致，但按钮不写打卡记录。
     func previewOverlayReminder(_ tasks: [PunchTask]) {
         reminder?.preview(tasks: tasks, settings: settings, record: record, now: now)
@@ -527,6 +538,8 @@ final class AppModel: ObservableObject {
 
     func select(_ item: SidebarSelection) {
         selectedSidebar = item
+        // 测试面板只服务于"从关于页解锁后去看一眼"：再次进入关于页就收回，不留下常驻入口。
+        if item == .settings(.about) { debugPanelUnlocked = false }
     }
 
     func openControlCenter(selecting id: ToolID? = nil) {

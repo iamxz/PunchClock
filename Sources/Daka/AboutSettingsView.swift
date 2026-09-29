@@ -4,6 +4,13 @@ import DakaCore
 struct AboutSettingsView: View {
     @ObservedObject var model: AppModel
 
+    /// 解锁测试面板：连点应用名达到该次数即开启，间隔超过 `tapResetInterval` 重新计数。
+    private static let unlockTaps = 5
+    private static let tapResetInterval: TimeInterval = 2.5
+
+    @State private var titleTaps = 0
+    @State private var lastTitleTap: Date?
+
     private var currentVersionText: String {
         UpdateChecker.shared.currentVersion?.description ?? "未知"
     }
@@ -12,7 +19,10 @@ struct AboutSettingsView: View {
         Form {
             Section("当前版本") {
                 HStack {
-                    Text("小打卡")
+                    Button(action: tapAppTitle) {
+                        Text("小打卡")
+                    }
+                    .buttonStyle(.plain)
                     Spacer()
                     Text(currentVersionText)
                         .foregroundStyle(.secondary)
@@ -43,6 +53,28 @@ struct AboutSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        // 连点只在「同一次停留在关于页」内累计：离开再回来重新开始。
+        .onAppear {
+            titleTaps = 0
+            lastTitleTap = nil
+        }
+    }
+
+    /// 连点「小打卡」解锁测试面板；只在刚解锁时提示一次。
+    private func tapAppTitle() {
+        let now = Date()
+        if let last = lastTitleTap, now.timeIntervalSince(last) > Self.tapResetInterval {
+            titleTaps = 0
+        }
+        lastTitleTap = now
+        titleTaps += 1
+        guard titleTaps >= Self.unlockTaps else { return }
+        titleTaps = 0
+        guard model.unlockDebugPanel() else { return }
+        ToastCenter.shared.show(ToastCenter.Toast(title: "测试面板已开启",
+                                                 body: "已加进左侧「设置」列表，回到本页后会重新隐藏。",
+                                                 icon: "hammer"),
+                               duration: 6)
     }
 
     @ViewBuilder

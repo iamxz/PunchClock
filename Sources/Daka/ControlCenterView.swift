@@ -44,13 +44,18 @@ struct ControlCenterView: View {
             }
 
             Section("设置") {
-                ForEach(SettingsPage.allCases) { page in
+                ForEach(visibleSettingsPages) { page in
                     Label(page.title, systemImage: page.symbol)
                         .tag(SidebarSelection.settings(page))
                 }
             }
         }
         .listStyle(.sidebar)
+    }
+
+    /// 未解锁时不列出测试面板。
+    private var visibleSettingsPages: [SettingsPage] {
+        SettingsPage.allCases.filter { model.debugPanelUnlocked || $0 != .debug }
     }
 
     private func summary(for id: ToolID) -> String {
