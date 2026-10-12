@@ -65,7 +65,7 @@ public struct CalendarView: View {
         return (shown.year ?? 0, shown.month ?? 0) < (current.year ?? 0, current.month ?? 0)
     }
 
-    private static let weekdayHeaders = ["日", "一", "二", "三", "四", "五", "六"]
+    private static let weekdayHeaders = ["一", "二", "三", "四", "五", "六", "日"]
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -104,10 +104,10 @@ public struct CalendarView: View {
 
     private var weekdayHeader: some View {
         HStack(spacing: 0) {
-            ForEach(Self.weekdayHeaders, id: \.self) { title in
+            ForEach(Array(Self.weekdayHeaders.enumerated()), id: \.offset) { idx, title in
                 Text(title)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(idx >= 5 ? Color.red.opacity(0.6) : .secondary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -435,8 +435,15 @@ private struct DayCellContent: View {
 
     private var backgroundColor: Color {
         switch cell.status {
-        case .none: return Color(nsColor: .controlBackgroundColor)
-        default: return Color(nsColor: .textBackgroundColor)
+        case .none:
+            // 非工作日（周末）用更深的底色与工作日区分
+            return cell.isWorkday
+                ? Color(nsColor: .controlBackgroundColor)
+                : Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
+        default:
+            return cell.isWorkday
+                ? Color(nsColor: .textBackgroundColor)
+                : Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
         }
     }
 

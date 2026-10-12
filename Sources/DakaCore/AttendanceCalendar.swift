@@ -105,8 +105,12 @@ public enum AttendanceCalendar {
         let firstWeekday = calendar.component(.weekday, from: monthStart) // 1..7, Sun..Sat
         let todayMidnight = calendar.startOfDay(for: now)
 
+        // 以周一为一周起点：将 Calendar.weekday（Sun=1...Sat=7）映射为周一起始的偏移量
+        // 周一(2)→0, 周二(3)→1, ..., 周六(7)→5, 周日(1)→6
+        let leadingBlanks = (firstWeekday + 5) % 7
+
         var flat: [AttendanceDayCell?] = []
-        for _ in 0..<(firstWeekday - 1) { flat.append(nil) }
+        for _ in 0..<leadingBlanks { flat.append(nil) }
 
         for day in 1...daysInMonth {
             guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else { continue }

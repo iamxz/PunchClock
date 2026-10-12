@@ -43,13 +43,14 @@ final class AttendanceCalendarTests: XCTestCase {
         let g = grid([:], now: TestTime.date(2026, 9, 10, 12, 0))
         XCTAssertEqual(g.year, 2026)
         XCTAssertEqual(g.month, 9)
-        XCTAssertEqual(g.firstWeekday, 3) // 周二
+        XCTAssertEqual(g.firstWeekday, 3) // 周二（Calendar.weekday: Sun=1...Sat=7）
         let nonNil = g.weeks.joined().compactMap { $0 }
         XCTAssertEqual(nonNil.count, 30)
-        // 30 天 + 前置 2 个补齐 = 32，补齐到 35（5 周）
+        // 2026-09-01 为周二，以周一为一周起点时前置补齐 1 个（周一）；
+        // 30 天 + 1 个前置补齐 = 31，补齐到 35（5 周）
         XCTAssertEqual(g.weeks.count, 5)
-        XCTAssertEqual(g.weeks[0][0], nil) // 周日补齐
-        XCTAssertEqual(g.weeks[0][1], nil) // 周一补齐
+        XCTAssertEqual(g.weeks[0][0], nil)    // 周一补齐
+        XCTAssertNotNil(g.weeks[0][1])       // 周二（1 号）
         XCTAssertEqual(cell(g, day: 1)?.weekday, 3)
     }
 
