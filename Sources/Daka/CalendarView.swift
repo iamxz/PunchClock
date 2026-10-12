@@ -107,7 +107,7 @@ public struct CalendarView: View {
             ForEach(Array(Self.weekdayHeaders.enumerated()), id: \.offset) { idx, title in
                 Text(title)
                     .font(.caption)
-                    .foregroundStyle(idx >= 5 ? Color.red.opacity(0.6) : .secondary)
+                    .foregroundStyle(idx >= 5 ? Color.blue.opacity(0.5) : .secondary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -214,7 +214,7 @@ public struct CalendarView: View {
             LegendItem(color: .red, icon: "exclamationmark.circle.fill", text: "缺卡")
             LegendItem(color: .purple, badge: "假", text: "请假")
             LegendItem(color: .blue, icon: "circle.fill", text: "待打卡")
-            LegendItem(color: .red, icon: "flag.fill", text: "法定假日")
+            LegendItem(color: .indigo, icon: "flag.fill", text: "法定假日")
             LegendItem(color: .orange, icon: "arrow.triangle.2.circlepath", text: "调休补班")
         }
         .font(.caption)
@@ -435,22 +435,29 @@ private struct DayCellContent: View {
 
     private var backgroundColor: Color {
         switch cell.status {
+        case .done:
+            return cell.isWorkday
+                ? Color.green.opacity(0.08)
+                : Color.blue.opacity(0.06)
+        case .missed:
+            return cell.isWorkday
+                ? Color.red.opacity(0.06)
+                : Color.blue.opacity(0.06)
         case .none:
-            // 非工作日（周末）用更深的底色与工作日区分
             return cell.isWorkday
                 ? Color(nsColor: .controlBackgroundColor)
-                : Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
+                : Color.blue.opacity(0.06)
         default:
             return cell.isWorkday
                 ? Color(nsColor: .textBackgroundColor)
-                : Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
+                : Color.blue.opacity(0.06)
         }
     }
 
     /// 节假日底色，与「工作日」设置页的图例保持同一套配色。
     private var dayTypeTint: Color {
         switch dayType {
-        case .holiday: return Color.red.opacity(0.10)
+        case .holiday: return Color.indigo.opacity(0.10)
         case .makeupWorkday: return Color.orange.opacity(0.12)
         case .workday, .weekend: return Color.clear
         }
