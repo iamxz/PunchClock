@@ -2,20 +2,33 @@ import SwiftUI
 import Charts
 import DakaCore
 
-/// 补卡（遗漏）请求：针对某一天补齐缺失的打卡记录。
+/// 补卡 / 改时间请求：针对某一天补齐缺失记录，或修正已有记录的时刻。
 struct MakeUpPunchRequest: Identifiable {
     let dateKey: String
     let date: Date
     /// 该天仍缺失的打卡任务（上班 / 下班）。
     let missing: [PunchTask]
-    /// 该天已有记录的摘要，用于弹窗提示。
-    let existing: [String]
-    /// 该天已有的上班卡（决定「合格下班卡」的下限时刻）。
+    /// 该天已有的上班卡（最早一条），及它在记录数组里的下标。
     let existingMorning: Date?
+    let existingMorningIndex: Int?
+    /// 该天已有的下班卡（最晚一条），及它在记录数组里的下标。
+    let existingEvening: Date?
+    let existingEveningIndex: Int?
+    /// 同一任务是否存了多条记录（弹窗会说明这里改的是哪一条）。
+    let hasMultiplePunches: Bool
 
     var id: String { dateKey }
 
+    var hasExisting: Bool { existingMorning != nil || existingEvening != nil }
+    var hasMissing: Bool { !missing.isEmpty }
+
     var title: String { Self.dayFormatter.string(from: date) }
+
+    /// 弹窗标题：只有缺失时是补卡，已有记录时说明还能改时间。
+    var editorTitle: String {
+        if hasExisting && hasMissing { return "补卡 / 改时间" }
+        return hasMissing ? "补卡（遗漏）" : "改时间"
+    }
 
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -87,7 +100,7 @@ struct StatisticsView: View {
                              leaveRequest = LeaveEditRequest(date: cell.date, leave: leave)
                          },
                          onCancelLeave: { cancelLeave($0) },
-                         onMakeUp: { makeUpRequest = makeUpRequest(for: $0) },
+                         onEditPunches: { makeUpRequest = makeUpRequest(for: $0) },
                          onClearPunches: { pendingClear = $0 })
             .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.records)
             .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.leaves)
@@ -140,19 +153,19 @@ struct StatisticsView: View {
             missing.append(.evening)
         }
 
-        var existing: [String] = []
-        if let morning = record.morningDoneAt {
-            existing.append("上班 \(Self.timeFormatter.string(from: morning))")
-        }
-        for evening in record.eveningPunches {
-            existing.append("下班 \(Self.timeFormatter.string(from: evening))")
-        }
+        // 日历只展示最早的上班卡与最晚的下班卡，改时间也改这两条。
+        let morning = record.morningDoneAt
+        let evening = record.eveningPunches.max()
 
         return MakeUpPunchRequest(dateKey: cell.dateKey,
                                   date: cell.date,
                                   missing: missing,
-                                  existing: existing,
-                                  existingMorning: record.morningDoneAt)
+                                  existingMorning: morning,
+                                  existingMorningIndex: morning.flatMap { record.morningPunches.firstIndex(of: $0) },
+                                  existingEvening: evening,
+                                  existingEveningIndex: evening.flatMap { record.eveningPunches.firstIndex(of: $0) },
+                                  hasMultiplePunches: record.morningPunches.count > 1
+                                      || record.eveningPunches.count > 1)
     }
 
     private var averageText: String {
@@ -340,13 +353,17 @@ struct StatisticsView: View {
     }()
 }
 
-// MARK: - 补卡（遗漏）弹窗
+// MARK: - 补卡 / 改时间弹窗
 
 struct MakeUpPunchEditor: View {
     @ObservedObject var model: AppModel
     let request: MakeUpPunchRequest
 
     @Environment(\.dismiss) private var dismiss
+    @State private var existingMorningEnabled: Bool
+    @State private var existingMorningTime: Date
+    @State private var existingEveningEnabled: Bool
+    @State private var existingEveningTime: Date
     @State private var morningEnabled: Bool
     @State private var morningTime: Date
     @State private var eveningEnabled: Bool
@@ -369,22 +386,44 @@ struct MakeUpPunchEditor: View {
             ?? referenceMorning.addingTimeInterval(settings.workDuration)
         let qualifyingEvening = Self.roundedUpToMinute(threshold).addingTimeInterval(60)
 
+        _existingMorningEnabled = State(initialValue: false)
+        _existingMorningTime = State(initialValue: request.existingMorning ?? morning)
+        _existingEveningEnabled = State(initialValue: false)
+        _existingEveningTime = State(initialValue: request.existingEvening ?? qualifyingEvening)
         _morningEnabled = State(initialValue: request.missing.contains(.morning))
-        _eveningEnabled = State(initialValue: request.missing.contains(.evening))
         _morningTime = State(initialValue: morning)
+        _eveningEnabled = State(initialValue: request.missing.contains(.evening))
         _eveningTime = State(initialValue: qualifyingEvening)
     }
 
-    /// 这次补卡视同的上班卡：已有卡优先，否则用即将补上的那张。
-    private var referenceMorning: Date? {
-        request.existingMorning
-            ?? (request.missing.contains(.morning) && morningEnabled ? morningTime : nil)
+    /// 保存后这一天的上班卡（取最早一条）。
+    private var resultingMorning: Date? {
+        var candidates: [Date] = []
+        if let existing = request.existingMorning {
+            candidates.append(existingMorningEnabled ? existingMorningTime : existing)
+        }
+        if request.missing.contains(.morning), morningEnabled {
+            candidates.append(morningTime)
+        }
+        return candidates.min()
     }
 
-    /// 合格下班卡的下限时刻（依据实际上班卡推算）。
+    /// 保存后这一天的下班卡（取最晚一条）。
+    private var resultingEvening: Date? {
+        var candidates: [Date] = []
+        if let existing = request.existingEvening {
+            candidates.append(existingEveningEnabled ? existingEveningTime : existing)
+        }
+        if request.missing.contains(.evening), eveningEnabled {
+            candidates.append(eveningTime)
+        }
+        return candidates.max()
+    }
+
+    /// 合格下班卡的下限时刻（依据保存后的上班卡推算）。
     private var eveningThreshold: Date? {
-        guard let referenceMorning else { return nil }
-        return Self.eveningThreshold(model: model, request: request, morning: referenceMorning)
+        guard let morning = resultingMorning else { return nil }
+        return Self.eveningThreshold(model: model, request: request, morning: morning)
     }
 
     /// 该天的合格下班卡下限：直接复用考勤规则，避免弹窗与日历各算一套。
@@ -397,39 +436,50 @@ struct MakeUpPunchEditor: View {
                                             leaves: model.leaves)
     }
 
-    private var eveningQualified: Bool {
-        guard eveningEnabled, let threshold = eveningThreshold else { return true }
-        return eveningTime >= threshold
-    }
-
     private var hasSelection: Bool {
-        (request.missing.contains(.morning) && morningEnabled)
+        existingMorningEnabled || existingEveningEnabled
+            || (request.missing.contains(.morning) && morningEnabled)
             || (request.missing.contains(.evening) && eveningEnabled)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("补卡（遗漏）")
+                Text(request.editorTitle)
                     .font(.headline)
                 Text(request.title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if !request.existing.isEmpty {
-                Label("该天已有：" + request.existing.joined(separator: "、"),
+            if request.hasMultiplePunches {
+                Label("同一天有多条打卡时，这里改的是最早的上班卡、最晚的下班卡。",
                       systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                if request.missing.contains(.morning) {
-                    row(task: .morning, isOn: $morningEnabled, time: $morningTime)
+                if request.hasExisting {
+                    sectionTitle("已有记录 · 勾选后可改时间")
+                    if let existing = request.existingMorning {
+                        row(task: .morning, isOn: $existingMorningEnabled,
+                            time: $existingMorningTime, note: "原 \(Self.timeText(existing))")
+                    }
+                    if let existing = request.existingEvening {
+                        row(task: .evening, isOn: $existingEveningEnabled,
+                            time: $existingEveningTime, note: "原 \(Self.timeText(existing))")
+                    }
                 }
-                if request.missing.contains(.evening) {
-                    row(task: .evening, isOn: $eveningEnabled, time: $eveningTime)
+
+                if request.hasMissing {
+                    if request.hasExisting { sectionTitle("补卡（遗漏）") }
+                    if request.missing.contains(.morning) {
+                        row(task: .morning, isOn: $morningEnabled, time: $morningTime, note: nil)
+                    }
+                    if request.missing.contains(.evening) {
+                        row(task: .evening, isOn: $eveningEnabled, time: $eveningTime, note: nil)
+                    }
                 }
             }
 
@@ -442,13 +492,13 @@ struct MakeUpPunchEditor: View {
             }
 
             HStack {
-                Text("只新增勾选的记录，不覆盖已有打卡")
+                Text(request.hasExisting ? "只写入勾选的项目，未勾选的已有记录保持不变" : "只新增勾选的记录")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()
                 Button("取消") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("补卡") { save() }
+                Button(request.hasExisting ? "保存" : "补卡") { save() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!hasSelection)
@@ -458,28 +508,34 @@ struct MakeUpPunchEditor: View {
         .frame(width: 400)
     }
 
-    /// 「这条下班卡到底算不算」的显式提示 —— 这是补卡最容易踩的坑。
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+    }
+
+    /// 「这条下班卡到底算不算」的显式提示 —— 这是补卡 / 改时间最容易踩的坑。
     @ViewBuilder
     private var qualificationNotice: some View {
-        if request.missing.contains(.evening), eveningEnabled,
-           let morning = referenceMorning, let threshold = eveningThreshold {
-            if eveningQualified {
-                Label("下班卡 \(Self.timeText(eveningTime)) 计入当天考勤（需不早于 \(Self.timeText(threshold))）",
+        if hasSelection, let evening = resultingEvening, let morning = resultingMorning,
+           let threshold = eveningThreshold {
+            if evening >= threshold {
+                Label("下班卡 \(Self.timeText(evening)) 计入当天考勤（需不早于 \(Self.timeText(threshold))）",
                       systemImage: "checkmark.seal")
                     .font(.caption)
                     .foregroundStyle(.green)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("这条下班卡不计入当天考勤",
+                    Label("下班卡 \(Self.timeText(evening)) 不计入当天考勤",
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.orange)
-                    Text("上班卡 \(Self.timeText(morning)) + 应工作 \(Self.hoursText(threshold.timeIntervalSince(morning))) → 下班需不早于 \(Self.timeText(threshold))；当前选择 \(Self.timeText(eveningTime))。")
+                    Text("上班卡 \(Self.timeText(morning)) + 应工作 \(Self.hoursText(threshold.timeIntervalSince(morning))) → 下班需不早于 \(Self.timeText(threshold))；当前 \(Self.timeText(evening))。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("改为 \(Self.timeText(Self.roundedUpToMinute(threshold).addingTimeInterval(60)))") {
-                        eveningTime = Self.roundedUpToMinute(threshold).addingTimeInterval(60)
+                        adoptQualifyingEvening()
                     }
                     .controlSize(.small)
                 }
@@ -490,10 +546,34 @@ struct MakeUpPunchEditor: View {
         }
     }
 
-    private func row(task: PunchTask, isOn: Binding<Bool>, time: Binding<Date>) -> some View {
+    /// 一键把下班卡调到合格时刻：优先改已有记录，没有才补一条新的。
+    private func adoptQualifyingEvening() {
+        guard let threshold = eveningThreshold else { return }
+        let fixed = Self.roundedUpToMinute(threshold).addingTimeInterval(60)
+        if request.existingEvening != nil {
+            existingEveningEnabled = true
+            existingEveningTime = fixed
+            eveningEnabled = false
+        } else if request.missing.contains(.evening) {
+            eveningEnabled = true
+            eveningTime = fixed
+        }
+    }
+
+    private func row(task: PunchTask,
+                     isOn: Binding<Bool>,
+                     time: Binding<Date>,
+                     note: String?) -> some View {
         HStack(spacing: 10) {
             Toggle(isOn: isOn) {
-                Label(task.title, systemImage: task == .morning ? "sunrise.fill" : "sunset.fill")
+                VStack(alignment: .leading, spacing: 1) {
+                    Label(task.title, systemImage: task == .morning ? "sunrise.fill" : "sunset.fill")
+                    if let note {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             .toggleStyle(.checkbox)
 
@@ -511,6 +591,14 @@ struct MakeUpPunchEditor: View {
         var written = 0
         var skipped = 0
 
+        if let index = request.existingMorningIndex, existingMorningEnabled {
+            model.updatePunch(.morning, index: index, to: existingMorningTime, on: request.date)
+            written += 1
+        }
+        if let index = request.existingEveningIndex, existingEveningEnabled {
+            model.updatePunch(.evening, index: index, to: existingEveningTime, on: request.date)
+            written += 1
+        }
         if request.missing.contains(.morning), morningEnabled {
             model.addPunch(.morning, at: morningTime) ? (written += 1) : (skipped += 1)
         }

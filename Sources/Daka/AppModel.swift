@@ -394,9 +394,14 @@ final class AppModel: ObservableObject {
     }
 
     func updatePunch(_ task: PunchTask, index: Int, to time: Date) {
+        updatePunch(task, index: index, to: time, on: clock.now)
+    }
+
+    /// 修改某一天的一条记录（日历里补改历史打卡用）。
+    func updatePunch(_ task: PunchTask, index: Int, to time: Date, on day: Date) {
         errorMessage = nil
         do {
-            try store.updatePunch(task, at: index, to: time, on: clock.now)
+            try store.updatePunch(task, at: index, to: time, on: day)
             refreshRecord()
             scheduler?.tick()
         } catch {

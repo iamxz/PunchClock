@@ -13,7 +13,7 @@ import DakaCore
 /// 请假：无论半天还是整天，统一在日期下方标紫色「假」，具体时段看 tooltip。
 /// 节假日标记：法定假日显示节日名（红）、调休补班显示名称（橙）、手动覆盖显示「手动」（蓝）。
 ///
-/// 右键可执行：新增/编辑/取消请假、补卡（遗漏）、清除该天记录。
+/// 右键可执行：新增/编辑/取消请假、补卡 / 改时间、清除该天记录。
 public struct CalendarView: View {
     @Binding var displayedMonth: Date
     let records: [String: DayRecord]
@@ -25,7 +25,7 @@ public struct CalendarView: View {
     var onAddLeave: ((AttendanceDayCell) -> Void)?
     var onEditLeave: ((AttendanceDayCell, LeaveRecord) -> Void)?
     var onCancelLeave: ((AttendanceDayCell) -> Void)?
-    var onMakeUp: ((AttendanceDayCell) -> Void)?
+    var onEditPunches: ((AttendanceDayCell) -> Void)?
     var onClearPunches: ((AttendanceDayCell) -> Void)?
 
     public init(displayedMonth: Binding<Date>,
@@ -38,7 +38,7 @@ public struct CalendarView: View {
                 onAddLeave: ((AttendanceDayCell) -> Void)? = nil,
                 onEditLeave: ((AttendanceDayCell, LeaveRecord) -> Void)? = nil,
                 onCancelLeave: ((AttendanceDayCell) -> Void)? = nil,
-                onMakeUp: ((AttendanceDayCell) -> Void)? = nil,
+                onEditPunches: ((AttendanceDayCell) -> Void)? = nil,
                 onClearPunches: ((AttendanceDayCell) -> Void)? = nil) {
         self._displayedMonth = displayedMonth
         self.records = records
@@ -50,7 +50,7 @@ public struct CalendarView: View {
         self.onAddLeave = onAddLeave
         self.onEditLeave = onEditLeave
         self.onCancelLeave = onCancelLeave
-        self.onMakeUp = onMakeUp
+        self.onEditPunches = onEditPunches
         self.onClearPunches = onClearPunches
     }
 
@@ -145,7 +145,7 @@ public struct CalendarView: View {
         .help(helpText(for: item))
     }
 
-    /// 右侧菜单：请假（新增 / 编辑 / 取消）、补卡（遗漏）、清除该天记录。
+    /// 右侧菜单：请假（新增 / 编辑 / 取消）、补卡 / 改时间、清除该天记录。
     @ViewBuilder
     private func menu(for item: AttendanceDayCell) -> some View {
         let onThisDay = LeaveRules.records(intersecting: item.date, in: leaves, calendar: calendar)
@@ -171,11 +171,12 @@ public struct CalendarView: View {
             .help("与这天相连的请假日程会整条撤销，包括跨天的部分")
         }
 
-        if !item.isFuture, canMakeUp(item) {
+        if !item.isFuture, canEditPunches(item) {
             Button {
-                onMakeUp?(item)
+                onEditPunches?(item)
             } label: {
-                Label("补卡（遗漏）…", systemImage: "plus.circle")
+                Label(punchEditorTitle(for: item),
+                      systemImage: hasPunches(item) ? "clock.arrow.circlepath" : "plus.circle")
             }
         }
 
@@ -196,6 +197,17 @@ public struct CalendarView: View {
         }
         let days = LeaveRules.naturalDays(of: only, calendar: calendar)
         return days > 1 ? "取消请假（共 \(days) 天）" : "取消请假"
+    }
+
+    /// 已有记录也能进来改时间；只缺卡时才叫「补卡」。
+    private func canEditPunches(_ item: AttendanceDayCell) -> Bool {
+        hasPunches(item) || canMakeUp(item)
+    }
+
+    private func punchEditorTitle(for item: AttendanceDayCell) -> String {
+        let hasMissing = !(item.morningDoneAt != nil && item.eveningDoneAt != nil)
+        guard hasPunches(item) else { return "补卡（遗漏）…" }
+        return hasMissing ? "补卡 / 改时间…" : "改时间…"
     }
 
     private func canMakeUp(_ item: AttendanceDayCell) -> Bool {
@@ -222,7 +234,7 @@ public struct CalendarView: View {
     }
 
     private var hint: some View {
-        Label("在日期上右键：新增请假、补卡（遗漏）或清除该天记录", systemImage: "cursorarrow.click.2")
+        Label("在日期上右键：新增请假、补卡 / 改时间或清除该天记录", systemImage: "cursorarrow.click.2")
             .font(.caption)
             .foregroundStyle(.tertiary)
     }
@@ -259,7 +271,7 @@ public struct CalendarView: View {
         if cell.isFuture {
             if cell.isWorkday { parts.append("右键可提前请假") }
         } else {
-            parts.append("右键可请假 / 补卡")
+            parts.append("右键可请假 / 补卡 / 改时间")
         }
         return ([base] + parts).joined(separator: " · ")
     }
