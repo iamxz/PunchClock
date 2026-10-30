@@ -4,12 +4,15 @@ import DakaCore
 @MainActor
 final class PunchPressModel: ObservableObject {
     @Published var progress: CGFloat = 0
+    /// 是否处在长按过程中（与 progress 不同：松开后 progress 会带回落动画）。
+    @Published private(set) var isActive = false
     private var timer: Timer?
     private var completed = false
     private let duration: TimeInterval = 3
 
     func start(onComplete: @escaping () -> Void) {
         guard timer == nil, !completed else { return }
+        isActive = true
         progress = 0
         let steps = 60
         var step = 0
@@ -36,6 +39,7 @@ final class PunchPressModel: ObservableObject {
         timer?.invalidate()
         timer = nil
         completed = false
+        isActive = false
         withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
     }
 }

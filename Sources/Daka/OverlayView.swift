@@ -7,42 +7,84 @@ final class OverlayModel: ObservableObject {
     @Published var settings: DakaCore.Settings = .default
     @Published var now: Date = Date()
     @Published var record: DakaCore.DayRecord = .init()
+    /// 遮罩被收起（ESC 暂停、结束预览）时递增，用于中止进行中的长按，
+    /// 避免窗口藏起来后计时器照样跑完、悄悄打卡。
+    @Published private(set) var pressCancelSignal = 0
     var onPunch: (PunchTask) -> Void = { _ in }
-}
 
-/// 打卡按钮：圆形大按钮，纯点击触发；配色与菜单栏环形按钮一致（上班绿、下班蓝）。
-struct OverlayPunchButton: View {
-    let task: PunchTask
-    let onComplete: (PunchTask) -> Void
-
-    var body: some View {
-        Button {
-            onComplete(task)
-        } label: {
-            Text(task.title)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 150, height: 150)
-        }
-        .buttonStyle(CircularPunchButtonStyle(tint: task == .morning ? .green : .blue))
+    func cancelPresses() {
+        pressCancelSignal &+= 1
     }
 }
 
-private struct CircularPunchButtonStyle: ButtonStyle {
-    let tint: Color
+/// 打卡按钮：圆形大按钮，长按 3 秒（3-2-1 倒计时）才算完成打卡，避免误触；
+/// 配色与菜单栏环形按钮一致（上班绿、下班蓝）。
+struct OverlayPunchButton: View {
+    let task: PunchTask
+    let cancelSignal: Int
+    let onComplete: (PunchTask) -> Void
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                Circle().fill(tint.opacity(configuration.isPressed ? 0.55 : 0.32))
-            )
-            .overlay(
-                Circle().strokeBorder(tint, lineWidth: 3)
-            )
-            .contentShape(Circle())
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7),
-                       value: configuration.isPressed)
+    @StateObject private var press = PunchPressModel()
+
+    private static let duration: CGFloat = 3
+
+    private var tint: Color { task == .morning ? .green : .blue }
+
+    var body: some View {
+        ZStack {
+            Circle().fill(tint.opacity(press.isActive ? 0.5 : 0.32))
+            Circle().strokeBorder(tint, lineWidth: 3)
+            Circle()
+                .inset(by: 11)
+                .stroke(tint.opacity(0.22), lineWidth: 6)
+            Circle()
+                .inset(by: 11)
+                .trim(from: 0, to: press.progress)
+                .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            label
+        }
+        .frame(width: 150, height: 150)
+        .contentShape(Circle())
+        .scaleEffect(press.isActive ? 0.97 : 1)
+        .animation(.spring(response: 0.28, dampingFraction: 0.7), value: press.isActive)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in press.start { onComplete(task) } }
+                .onEnded { _ in press.cancel() }
+        )
+        .onChange(of: task) { _, _ in press.cancel() }
+        .onChange(of: cancelSignal) { _, _ in press.cancel() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(task.title))
+        .accessibilityHint(Text("长按 3 秒完成打卡；旁白可直接操作"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: Text("完成打卡")) { onComplete(task) }
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        if press.isActive {
+            VStack(spacing: 0) {
+                Text(task.title)
+                    .font(.system(size: 14, weight: .medium))
+                    .opacity(0.8)
+                Text("\(remainingSeconds)")
+                    .font(.system(size: 56, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.easeOut(duration: 0.18), value: remainingSeconds)
+            }
+            .foregroundStyle(.white)
+        } else {
+            Text(task.title)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+
+    private var remainingSeconds: Int {
+        max(1, Int(ceil(Self.duration * (1 - press.progress))))
     }
 }
 
@@ -74,13 +116,18 @@ struct OverlayView: View {
                             ForEach(model.tasks, id: \.self) { task in
                                 OverlayPunchButton(
                                     task: task,
+                                    cancelSignal: model.pressCancelSignal,
                                     onComplete: model.onPunch
                                 )
                             }
                         }
-                        Text("ESC 可暂停，过提醒间隔后重新弹出")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.gray)
+                        VStack(spacing: 6) {
+                            Text("长按圆形按钮 3 秒完成打卡")
+                                .foregroundStyle(.white.opacity(0.75))
+                            Text("ESC 可暂停，过提醒间隔后重新弹出")
+                                .foregroundStyle(.gray)
+                        }
+                        .font(.system(size: 14))
                     }
                     .padding(48)
                     .frame(maxWidth: 640)

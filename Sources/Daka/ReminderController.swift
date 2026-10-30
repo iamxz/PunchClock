@@ -108,6 +108,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
         stopReassertTimer()
         isPreview = false
         currentTasks = []
+        overlayModel.cancelPresses()
         syncOverlay(activate: false)
     }
 
@@ -133,6 +134,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
             snoozeTimer?.invalidate()
             snoozeTimer = nil
             isSnoozed = false
+            overlayModel.cancelPresses()
             for w in windows { w.orderOut(nil) }
         }
     }
@@ -216,6 +218,7 @@ final class ReminderController: @preconcurrency ReminderPresenting {
             return
         }
         stopReassertTimer()
+        overlayModel.cancelPresses()
         for w in windows { w.orderOut(nil) }
         isSnoozed = true
         scheduleSnooze()
