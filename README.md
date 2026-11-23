@@ -8,7 +8,7 @@
 
 一个常规 macOS 本地打卡提醒应用（Dock 图标 + 主窗口 + 菜单栏项），在工作日提醒你完成 **上班 / 下班** 两次打卡。
 
-打卡记录**纯本地保存**：不连接任何公司考勤系统、不访问网络、不打开网页、不执行外部脚本。
+打卡记录**纯本地保存**：不连接任何公司考勤系统，也不会上传打卡、请假或健康记录；只有「检查更新」和「前往 GitHub 下载」会访问网络。
 
 ## 预览
 
@@ -25,11 +25,10 @@
 - **时间段请假**：在日历上右键「新增请假」，可填当天几小时、也可跨天（周末/节假日一并覆盖，但只有工作日计入统计）。请假时长直接抵扣当天应上班时长：9:00 上班、工时 9 小时、请假 16:00–18:00，则 16:00 打下班卡即算正常出勤。日历上标「假」，tooltip 列出当天具体时段；请假期间不弹打卡与健康提醒，请假结束立刻恢复。半天按 0.5 天折算，统计页展示「本月请假 N 天」。
 - **开机自启**：登录时若当天上班未打卡，会立即催打卡。
 - **定点拉起**：通过 `launchd` 在三个打卡时点自动拉起已在后台退出的应用（单实例）；已在运行时则跳过（不重复拉起、不弹主窗口）。
-- **退出需二次确认**：Cmd+Q / Dock 退出 / 设置页「退出应用」都会先弹出确认框，列出今日未完成打卡与「退出后提醒停止」的影响，确认后才真正退出；系统注销/关机/重启直接放行，不阻碍关机。
-- **测试面板**：「设置 → 测试面板」可逐个预览全部 toast 提示模板（打卡成功、未满时长、喝水、久坐等），预览文案与线上一致，也可「连发 3 条」查看层叠效果。
+- **退出需二次确认**：Cmd+Q / Dock 退出 / 设置页「退出应用」都会先弹出确认框说明退出影响（退出后提醒停止、漏卡不补），确认后才真正退出；系统注销/关机/重启直接放行，不阻碍关机。
 - **系统事件响应**：休眠唤醒、系统时间/时区变更后立即重算提醒。
-- **数据容错**：写盘原子替换；JSON 损坏时自动备份并重建，菜单栏可见错误。
-- **打卡统计**：主窗口「统计」页展示五张指标卡（本月打卡 / 连续打卡 / 平均上班 / 缺卡 / 本月请假）与最近 7 / 14 / 30 天每日上班时长柱状图。
+- **数据容错**：写盘原子替换；JSON 损坏时自动备份并重建，出错时页面顶部会显示提示。
+- **打卡统计**：主窗口「统计」页展示本月考勤指标卡与最近 7 / 14 / 30 天每日上班时长柱状图。
 - **喝水 / 走动**：到点只在屏幕右上角弹 toast 弱提示（微信提示样式：深色圆角卡片 + 方形头像），从右侧滑入、数秒后自动淡出，不抢焦点、不打断工作，可在控制中心一键记录一杯水 / 一次起身。提醒只在工作日、打卡工作时段内生效。
 - **健康统计**：控制中心「喝水」「久坐」页展示今日进度、连续达标、平均每日与 7 / 14 / 30 天柱状图（含目标线）。
 
@@ -65,27 +64,13 @@ make icon-preview                  # 生成全部变体的对比预览图
 
 ### 下载安装
 
-从 [GitHub Releases](https://github.com/iamxz/PunchClock/releases) 下载最新版本的 `.pkg` 安装包。
+从 [GitHub Releases](https://github.com/iamxz/PunchClock/releases) 下载最新版本的 `.pkg` 安装包。安装前请先退出正在运行的应用（主窗口「设置 → 系统与启动 → 退出应用」），否则安装器覆盖运行中的 app 可能失败。
 
 校验包完整性：
 
 ```sh
 shasum -a 256 -c checksums.txt
 ```
-
-### 自动发版
-
-先在 `docs/release-notes/` 写好本版本的更新说明（文件名即版本号，如 `v1.2.6.md`），它会被拼进 GitHub Release 正文：
-
-```sh
-make release VERSION=<x.y.z|patch|minor|major> MSG="提交信息"
-```
-
-脚本会跑测试、改 `Resources/Info.plist` 的双版本号、打 `vX.Y.Z` 标签并推送；CI 通过后发布 `.pkg` + `.app.zip` + `checksums.txt` 与该更新说明。忘了写说明时脚本会按提交记录起草一份占位草稿，记得改写后再发。
-
-### 分发安装包
-
-`make pkg` 产出的 `build/Daka-<版本>.pkg` 是 Universal 安装包，双击后自动把应用装到 `/Applications/小打卡.app`。
 
 app 为 **ad-hoc 签名**、安装包本身**未签名**，且均**未公证**，别人首次打开会被 Gatekeeper 拦截，需任选一种放行：
 
@@ -98,19 +83,25 @@ app 为 **ad-hoc 签名**、安装包本身**未签名**，且均**未公证**�
 xattr -dr com.apple.quarantine /Applications/小打卡.app
 ```
 
-**安装前请先退出正在运行的应用**（主窗口「设置 → 系统与启动 → 退出应用」），否则安装器覆盖运行中的 app 可能失败。
+### 自动发版
+
+先在 `docs/release-notes/` 写好本版本的更新说明（文件名即版本号，如 `v1.2.6.md`），它会被拼进 GitHub Release 正文：
+
+```sh
+make release VERSION=<x.y.z|patch|minor|major> MSG="提交信息"
+```
+
+脚本会跑测试、改 `Resources/Info.plist` 的双版本号、打 `vX.Y.Z` 标签并推送；CI 通过后发布 `.pkg` + `.app.zip` + `checksums.txt` 与该更新说明。忘了写说明时脚本会按提交记录起草一份占位草稿，记得改写后再发。
 
 ## 使用说明
 
 启动后应用同时出现在 Dock 与菜单栏，并打开主窗口：
 
-- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「考勤规则 / 系统与启动 / 关于 · 更新 / 测试面板」四个子页，「打卡统计」页可切换「今天不打卡」。
+- 主窗口左侧为工具列表 +「设置」分组；「设置」下分「考勤规则 / 系统与启动 / 关于 / 更新」三个子页。
 - 「打卡统计」页顶部为「今日打卡」：可对上班/下班**补卡**（选时间）、**改时间**、**删除**误点记录，仅限今天；历史日期在日历上右键可**补卡 / 改时间**（例如修正当天的首次打卡），勾选已有记录后即可改。
 - **关闭主窗口不退出应用**，应用继续在后台提醒；再次点 Dock 图标或菜单栏面板右上角的「控制中心」图标可重新打开。
-- 菜单栏图标两态：`checkmark.seal` 正常 / `exclamationmark.triangle.fill` 有待打卡。
-- 菜单栏面板：右上角「控制中心」图标（`switch.2`）+ 今日状态 + 打卡按钮。
+- 菜单栏面板：右上角「控制中心」图标（`switch.2`）+ 打卡按钮。
 - **退出会先弹确认框**：Cmd+Q / Dock 退出 / 主窗口「设置 → 系统与启动 → 退出应用」走同一条确认路径，弹窗用一句话说明退出影响（如有卡未打则提示漏卡不补）；点「取消」或按回车即继续常驻提醒。
-- **测试面板**：「设置 → 测试面板」列出全部 toast 提示模板，点「预览」即时浮出真实提示，也可「依次播放全部」逐个过一遍，或「连发 3 条」查看层叠效果。
 - **系统注销 / 关机 / 重启**时允许应用退出，不会阻碍关机。
 - **全屏遮罩只承载考勤**：圆形按钮需**长按 3 秒**（带 3-2-1 倒计时环）才写入打卡，提前松手即取消；可用 **ESC 暂停**（立即隐藏，过「重复提醒」间隔后自动重新弹出，直到完成对应打卡）；Cmd+W / Cmd+M / Cmd+H 仍无效。
 - 打卡后若当天仍未完成（如下班未满最少工时或缺少上班卡），会以 toast 说明原因与还差多久。
@@ -188,29 +179,11 @@ xattr -dr com.apple.quarantine /Applications/小打卡.app
 ```
 Sources/
   DakaCore/        # 纯逻辑，无 UI/IO 依赖，可单测
-    Models.swift          数据模型（Settings / DayRecord）
-    AttendanceRule.swift  纯函数：由考勤参数推导有效上班 / 应下班 / 完成判定
-    ScheduleEvaluator.swift 纯函数：计算待打卡任务
-    Scheduler.swift       定时 tick，驱动提醒
-    PunchStore.swift      持久化（原子写、损坏恢复）
-    DakaClock.swift       可注入时钟
-    Statistics.swift      统计口径
-    PunchFeedback.swift   打卡未完成原因文案
-    DakaDate.swift / PunchTarget.swift / ToolCatalog.swift 日期、打卡目标与工具目录
-    HealthModels.swift / HealthRules.swift / HealthStore.swift / HealthStatistics.swift 健康习惯
-    LaunchAgentPlist.swift 定点拉起 plist 生成
   Daka/            # AppKit + SwiftUI 应用层
-    AppDelegate.swift / DakaApp.swift
-    AppModel.swift / MenuBarView.swift / ControlCenterView.swift
-    MainWindowController.swift / SettingsPage.swift / SettingsPages.swift
-    StatisticsView.swift / PunchToolView.swift / PunchButton.swift
-    ReminderController.swift / OverlayView.swift
-    HealthReminderController.swift / HealthToolViews.swift
-    LoginItemManager.swift / ScheduledLaunchManager.swift
 Tests/DakaCoreTests/   # 单元测试
-Resources/             # Info.plist、Daka.icns 应用图标、状态栏图标
-scripts/               # 图标生成脚本（make-appicon.swift 等）
-docs/                  # 设计文档、实现计划、验证清单
+Resources/             # Info.plist、应用图标
+scripts/               # 图标生成与发版脚本
+docs/release-notes/    # 各版本的 GitHub Release 更新说明
 ```
 
 ## 测试
@@ -229,7 +202,7 @@ swift test
 - 系统注销/关机开始时放行退出；若注销被取消，放行状态最多 60 秒后自动恢复封锁（因此极慢的关机流程理论上可能被短暂拦截，属已知边界）。
 - 节假日数据为内置的 2025–2027 年中国法定节假日与调休表，不会自动更新；表外的日子按星期判断，需要休息请用「新增请假」。
 - 定点拉起依赖 `launchd`，需要用户已登录且系统已唤醒；到点拉起在后台运行，不会弹出主窗口（已在运行时则跳过，不重复拉起、不弹主窗口）。
-- app 为 ad-hoc 签名、安装包未签名，且均未公证（无 Developer ID 证书）；分发给他人需按「分发安装包」一节放行 Gatekeeper。
+- app 为 ad-hoc 签名、安装包未签名，且均未公证（无 Developer ID 证书）；分发给他人需按「下载安装」一节放行 Gatekeeper。
 
 ## 参与贡献
 
