@@ -67,7 +67,7 @@ public enum WorkdayDayType: Equatable, Sendable {
 public struct WorkdayCalendar: Sendable {
     public var baseWorkdays: Set<Int>
 
-    /// 内置的中国法定节假日与调休数据（2025、2026 年，官方公布口径）。
+    /// 内置的中国法定节假日与调休数据（2025–2027 年，官方公布口径）。
     public static let chinaHolidays: [String: HolidayEntry] = ChinaHolidayCalendarBuilder.build()
 
     public init(baseWorkdays: Set<Int> = [2, 3, 4, 5, 6]) {
@@ -104,6 +104,27 @@ enum ChinaHolidayCalendarBuilder {
         func add(_ keys: [String], _ kind: HolidayKind, _ name: String) {
             for k in keys { dict[k] = HolidayEntry(date: k, kind: kind, name: name) }
         }
+
+        // MARK: - 2027 年（国务院办公厅 2026-11-05 通知）
+        // 元旦：1/1–1/3 放假，不调休
+        add(["2027-01-01", "2027-01-02", "2027-01-03"], .holiday, "元旦")
+        // 春节：2/5(除夕)–2/13 放假，1/31、2/14 补班
+        add(["2027-02-05", "2027-02-06", "2027-02-07", "2027-02-08", "2027-02-09",
+             "2027-02-10", "2027-02-11", "2027-02-12", "2027-02-13"], .holiday, "春节")
+        add(["2027-01-31", "2027-02-14"], .makeup, "春节调休")
+        // 清明节：4/3–4/5 放假，不调休
+        add(["2027-04-03", "2027-04-04", "2027-04-05"], .holiday, "清明节")
+        // 劳动节：5/1–5/5 放假，5/8 补班
+        add(["2027-05-01", "2027-05-02", "2027-05-03", "2027-05-04", "2027-05-05"], .holiday, "劳动节")
+        add(["2027-05-08"], .makeup, "劳动节调休")
+        // 端午节：6/9 放假，不调休
+        add(["2027-06-09"], .holiday, "端午节")
+        // 中秋节：9/15 放假，不调休
+        add(["2027-09-15"], .holiday, "中秋节")
+        // 国庆节：10/1–10/7 放假，9/26、10/9 补班
+        add(["2027-10-01", "2027-10-02", "2027-10-03", "2027-10-04", "2027-10-05",
+             "2027-10-06", "2027-10-07"], .holiday, "国庆节")
+        add(["2027-09-26", "2027-10-09"], .makeup, "国庆节调休")
 
         // MARK: - 2026 年（国务院办公厅 2025-11-04 通知）
         // 元旦：1/1–1/3 放假，1/4 补班
